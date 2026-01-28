@@ -77,6 +77,7 @@ export default function Sidebar({ isOpen, onClose }) {
               <LogOut size={20} />
               Logout
             </button>
+            <div className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-blue-600 hover:bg-red-50 rounded-lg transition-colors"> By Aman Joshi</div>
           </div>
         </div>
       </div>
