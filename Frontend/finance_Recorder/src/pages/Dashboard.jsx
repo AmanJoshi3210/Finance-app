@@ -17,6 +17,10 @@ import {
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
+  
+  // ✅ Added State for Mobile Sidebar
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
   const [userData, setUserData] = useState({ totalCredit: 0, totalDebit: 0, monthlyLimit: 0 });
   const [transactions, setTransactions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -33,8 +37,7 @@ export default function Dashboard() {
 
         setUserData(userRes.data);
 
-        // ✅ FIX: Sort by Date Descending (Newest First) then take top 5
-        // This ensures accuracy regardless of how the backend returns the order
+        // Sort by Date Descending (Newest First) then take top 5
         const sortedTransactions = txRes.data.sort((a, b) => {
           return new Date(b.date) - new Date(a.date);
         });
@@ -78,14 +81,22 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      {/* Fixed Sidebar */}
-      <div className="hidden md:block fixed h-full z-50">
-        <Sidebar />
-      </div>
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 relative">
+      
+      {/* ✅ Sidebar with State Props */}
+      <Sidebar 
+        isOpen={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)} 
+      />
 
+      {/* Main Content Area */}
       <div className="flex-1 md:ml-64 transition-all duration-300">
-        <Navbar title="Dashboard" />
+        
+        {/* ✅ Navbar with Toggle Callback */}
+        <Navbar 
+          title="Dashboard" 
+          onMenuClick={() => setIsSidebarOpen(true)} 
+        />
         
         <div className="p-6 md:p-8 max-w-7xl mx-auto">
           

@@ -10,13 +10,16 @@ import {
   ArrowDownLeft,
   Search,
   Calendar,
-  Wallet,
-  FileText
+  Wallet
 } from "lucide-react";
 
 export default function Transactions() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // ✅ State for Mobile Sidebar
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -24,6 +27,7 @@ export default function Transactions() {
       try {
         const res = await axiosInstance.get("/api/transactions");
 
+        // Sort by Date Descending (Newest First)
         setTransactions(
           [...res.data].sort(
             (a, b) => new Date(b.date) - new Date(a.date)
@@ -59,16 +63,22 @@ export default function Transactions() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 relative">
 
-      {/* Sidebar Wrapper - Fixed on Desktop */}
-      <div className="hidden md:block fixed h-full z-50">
-        <Sidebar />
-      </div>
+      {/* ✅ Sidebar with State Props */}
+      <Sidebar 
+        isOpen={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)} 
+      />
 
       {/* Main Content Area */}
       <div className="flex-1 md:ml-64 transition-all duration-300">
-        <Navbar title="Transaction History" />
+        
+        {/* ✅ Navbar with Toggle Callback */}
+        <Navbar 
+          title="Transaction History" 
+          onMenuClick={() => setIsSidebarOpen(true)} 
+        />
 
         <div className="max-w-5xl mx-auto p-6 md:p-8">
 

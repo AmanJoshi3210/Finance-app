@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from "../components/Sidebar";
@@ -8,15 +8,18 @@ import {
   History, 
   ArrowRight, 
   LayoutDashboard,
-  // New icons for company logos
   Hexagon,
   Command,
   Activity,
-  Triangle
+  Triangle,
+  Menu // ✅ Imported Menu icon for mobile toggle
 } from "lucide-react";
 
 export default function Home() {
   const { user, loading } = useAuth();
+  
+  // ✅ Added State for Mobile Sidebar
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   if (loading) {
     return (
@@ -28,13 +31,25 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans selection:bg-blue-100 selection:text-blue-900">
+    <div className="min-h-screen bg-slate-50 font-sans selection:bg-blue-100 selection:text-blue-900 relative">
       
-      {/* ✅ Fixed Sidebar (only when logged in, desktop only) */}
+      {/* ✅ Responsive Sidebar Implementation */}
       {user && (
-        <aside className="fixed left-0 top-0 h-screen w-64 bg-white border-r border-slate-200 shadow-xl z-50 hidden md:block">
-          <Sidebar />
-        </aside>
+        <Sidebar 
+          isOpen={isSidebarOpen} 
+          onClose={() => setIsSidebarOpen(false)} 
+        />
+      )}
+
+      {/* ✅ Mobile Menu Button (Only visible when logged in & on mobile) */}
+      {user && (
+        <button
+          onClick={() => setIsSidebarOpen(true)}
+          className="fixed top-4 left-4 z-40 p-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-lg shadow-lg text-white md:hidden hover:bg-white/20 transition-all"
+          aria-label="Open Menu"
+        >
+          <Menu size={24} />
+        </button>
       )}
 
       {/* ✅ Main Content */}
@@ -141,7 +156,6 @@ export default function Home() {
               Trusted by innovative teams at
             </p>
 
-            {/* Added Icons to logos below */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 items-center justify-center opacity-60 hover:opacity-100 transition-opacity duration-500">
               <CompanyLogo 
                 name="ApexSoft" 
@@ -214,7 +228,6 @@ function InfoCard({ icon, title, description, color }) {
   );
 }
 
-// ✅ Updated CompanyLogo component to accept an 'icon' prop
 function CompanyLogo({ name, icon }) {
   return (
     <div className="flex items-center justify-center gap-3 group cursor-default">

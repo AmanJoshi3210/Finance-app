@@ -1,4 +1,3 @@
-// src/pages/AddTransaction.jsx
 import React, { useState } from "react";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
@@ -21,9 +20,12 @@ const AddTransaction = () => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  
+  // ✅ State for Mobile Sidebar
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [form, setForm] = useState({
-    type: "debit", // Default to debit
+    type: "debit",
     method: "",
     category: "",
     amount: "",
@@ -44,7 +46,6 @@ const AddTransaction = () => {
     try {
       await axiosInstance.post("/api/transactions", form);
       setOpen(true);
-      // Optional: Clear form on success
       setForm({
         type: "debit",
         method: "",
@@ -63,17 +64,24 @@ const AddTransaction = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
-      {/* Sidebar - Fixed on Desktop */}
-      <div className="hidden md:block fixed h-full z-50">
-        <Sidebar />
-      </div>
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 relative">
+      
+      {/* ✅ Sidebar with State Props */}
+      <Sidebar 
+        isOpen={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(false)} 
+      />
 
       {/* Main Content */}
       <div className="flex-1 md:ml-64 transition-all duration-300">
-        <Navbar title="New Entry" />
+        
+        {/* ✅ Navbar with Toggle Callback */}
+        <Navbar 
+          title="New Entry" 
+          onMenuClick={() => setIsSidebarOpen(true)} 
+        />
 
-        <div className="flex justify-center items-start pt-10 px-4 md:px-8 pb-10">
+        <div className="flex justify-center items-start pt-6 md:pt-10 px-4 md:px-8 pb-10">
           <div className="bg-white shadow-sm border border-slate-200 rounded-2xl w-full max-w-2xl overflow-hidden">
             
             <div className="bg-slate-50 border-b border-slate-100 p-6">
@@ -83,7 +91,7 @@ const AddTransaction = () => {
 
             <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6">
               
-              {/* Type Selection (Visual Toggle) */}
+              {/* Type Selection */}
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-3">Transaction Type</label>
                 <div className="grid grid-cols-2 gap-4">
@@ -97,7 +105,7 @@ const AddTransaction = () => {
                     }`}
                   >
                     <ArrowDownCircle size={20} />
-                    Credit (Income)
+                    Credit
                   </button>
 
                   <button
@@ -110,7 +118,7 @@ const AddTransaction = () => {
                     }`}
                   >
                     <ArrowUpCircle size={20} />
-                    Debit (Expense)
+                    Debit
                   </button>
                 </div>
               </div>
@@ -147,7 +155,7 @@ const AddTransaction = () => {
                       name="category"
                       value={form.category}
                       onChange={handleChange}
-                      placeholder="e.g. Food, Rent, Salary"
+                      placeholder="e.g. Food"
                       required
                       className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                     />
@@ -167,7 +175,7 @@ const AddTransaction = () => {
                     value={form.method}
                     onChange={handleChange}
                     required
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all appearance-none"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all appearance-none bg-white"
                   >
                     <option value="">Select Method</option>
                     <option value="cash">Cash</option>
@@ -189,7 +197,7 @@ const AddTransaction = () => {
                     name="description"
                     value={form.description}
                     onChange={handleChange}
-                    placeholder="Add notes regarding this transaction..."
+                    placeholder="Add notes..."
                     rows={3}
                     className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
                   />
@@ -224,7 +232,6 @@ const AddTransaction = () => {
           </div>
         </div>
 
-        {/* MUI Snackbar for Success Message */}
         <Snackbar
           open={open}
           autoHideDuration={3000}
