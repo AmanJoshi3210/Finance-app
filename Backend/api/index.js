@@ -11,9 +11,22 @@ import transactionRoutes from "../Routes/transactionRoutes.js";
 dotenv.config();
 
 const app = express();
+const allowedOrigins = [
+  "https://finance-app-rouge-eight.vercel.app",
+  "https://finance-app-git-main-amanjoshi3210s-projects.vercel.app",
+  "https://finance-56h50jgwb-amanjoshi3210s-projects.vercel.app",
+];
+
 app.use(
   cors({
-    origin: "https://finance-app-rouge-eight.vercel.app",
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true); // allow Postman / server-to-server
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
