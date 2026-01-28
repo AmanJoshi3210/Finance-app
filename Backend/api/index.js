@@ -11,10 +11,16 @@ import transactionRoutes from "../Routes/transactionRoutes.js";
 dotenv.config();
 
 const app = express();
+app.use(
+  cors({
+    origin: "https://finance-app-rouge-eight.vercel.app",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
 
 // ====== Middleware ======
 app.use(express.json());
-app.use(cors());
 
 // ====== DB Connection ======
 connectDB();
