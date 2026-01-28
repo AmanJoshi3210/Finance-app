@@ -4,16 +4,26 @@ import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import axiosInstance from "../api/axiosInstance";
 import { useNavigate } from "react-router-dom";
-import Button from '@mui/material/Button';
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
+import { 
+  IndianRupee, 
+  Tags, 
+  Wallet, 
+  FileText, 
+  ArrowUpCircle, 
+  ArrowDownCircle,
+  Loader2,
+  CheckCircle2
+} from "lucide-react";
 
 const AddTransaction = () => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [form, setForm] = useState({
-    type: "",
+    type: "debit", // Default to debit
     method: "",
     category: "",
     amount: "",
@@ -24,141 +34,212 @@ const AddTransaction = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const handleTypeSelect = (type) => {
+    setForm({ ...form, type });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     try {
-      await axiosInstance.post("/api/transactions", form, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
+      await axiosInstance.post("/api/transactions", form);
       setOpen(true);
+      // Optional: Clear form on success
+      setForm({
+        type: "debit",
+        method: "",
+        category: "",
+        amount: "",
+        description: "",
+      });
     } catch (error) {
       console.error(error);
-      if (error.response?.status === 401) navigate("/login");
-      else alert("Failed to add transaction. Try again.");
+      if (error.response?.status === 401) {
+        navigate("/login");
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar */}
-      <Sidebar />
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+      {/* Sidebar - Fixed on Desktop */}
+      <div className="hidden md:block fixed h-full z-50">
+        <Sidebar />
+      </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Navbar */}
-        <Navbar title="Add Transaction" />
+      <div className="flex-1 md:ml-64 transition-all duration-300">
+        <Navbar title="New Entry" />
 
-        {/* Page Content */}
-        <div className="flex justify-center items-center flex-1 p-6">
-          <div className="bg-white shadow-lg rounded-2xl p-8 w-full max-w-md">
-            <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">
-              Add Transaction
-            </h2>
+        <div className="flex justify-center items-start pt-10 px-4 md:px-8 pb-10">
+          <div className="bg-white shadow-sm border border-slate-200 rounded-2xl w-full max-w-2xl overflow-hidden">
+            
+            <div className="bg-slate-50 border-b border-slate-100 p-6">
+              <h2 className="text-xl font-bold text-slate-800">Add Transaction</h2>
+              <p className="text-sm text-slate-500 mt-1">Record a new income or expense details below.</p>
+            </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Type */}
+            <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6">
+              
+              {/* Type Selection (Visual Toggle) */}
               <div>
-                <label className="block mb-1 text-gray-700">Type</label>
-                <select
-                  name="type"
-                  value={form.type}
-                  onChange={handleChange}
-                  required
-                  className="w-full p-2 border border-gray-300 rounded-lg"
-                >
-                  <option value="">Select Type</option>
-                  <option value="credit">Credit</option>
-                  <option value="debit">Debit</option>
-                </select>
+                <label className="block text-sm font-medium text-slate-700 mb-3">Transaction Type</label>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => handleTypeSelect("credit")}
+                    className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all duration-200 ${
+                      form.type === "credit"
+                        ? "border-emerald-500 bg-emerald-50 text-emerald-700 font-bold"
+                        : "border-slate-100 bg-white text-slate-500 hover:bg-slate-50"
+                    }`}
+                  >
+                    <ArrowDownCircle size={20} />
+                    Credit (Income)
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleTypeSelect("debit")}
+                    className={`flex items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all duration-200 ${
+                      form.type === "debit"
+                        ? "border-rose-500 bg-rose-50 text-rose-700 font-bold"
+                        : "border-slate-100 bg-white text-slate-500 hover:bg-slate-50"
+                    }`}
+                  >
+                    <ArrowUpCircle size={20} />
+                    Debit (Expense)
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Amount */}
+                <div className="col-span-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Amount</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <IndianRupee size={18} className="text-slate-400" />
+                    </div>
+                    <input
+                      type="number"
+                      name="amount"
+                      value={form.amount}
+                      onChange={handleChange}
+                      placeholder="0.00"
+                      required
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Category */}
+                <div className="col-span-1">
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Category</label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Tags size={18} className="text-slate-400" />
+                    </div>
+                    <input
+                      type="text"
+                      name="category"
+                      value={form.category}
+                      onChange={handleChange}
+                      placeholder="e.g. Food, Rent, Salary"
+                      required
+                      className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Method */}
               <div>
-                <label className="block mb-1 text-gray-700">Method</label>
-                <select
-                  name="method"
-                  value={form.method}
-                  onChange={handleChange}
-                  required
-                  className="w-full p-2 border border-gray-300 rounded-lg"
-                >
-                  <option value="">Select Method</option>
-                  <option value="cash">Cash</option>
-                  <option value="upi">UPI</option>
-                  <option value="card">Card</option>
-                  <option value="bank">Bank Transfer</option>
-                </select>
-              </div>
-
-              {/* Category */}
-              <div>
-                <label className="block mb-1 text-gray-700">Category</label>
-                <input
-                  type="text"
-                  name="category"
-                  value={form.category}
-                  onChange={handleChange}
-                  placeholder="e.g. Food, Bills, Salary"
-                  required
-                  className="w-full p-2 border border-gray-300 rounded-lg"
-                />
-              </div>
-
-              {/* Amount */}
-              <div>
-                <label className="block mb-1 text-gray-700">Amount</label>
-                <input
-                  type="number"
-                  name="amount"
-                  value={form.amount}
-                  onChange={handleChange}
-                  placeholder="Enter amount"
-                  required
-                  className="w-full p-2 border border-gray-300 rounded-lg"
-                />
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Payment Method</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Wallet size={18} className="text-slate-400" />
+                  </div>
+                  <select
+                    name="method"
+                    value={form.method}
+                    onChange={handleChange}
+                    required
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all appearance-none"
+                  >
+                    <option value="">Select Method</option>
+                    <option value="cash">Cash</option>
+                    <option value="upi">UPI</option>
+                    <option value="card">Card</option>
+                    <option value="bank">Bank Transfer</option>
+                  </select>
+                </div>
               </div>
 
               {/* Description */}
               <div>
-                <label className="block mb-1 text-gray-700">Description</label>
-                <textarea
-                  name="description"
-                  value={form.description}
-                  onChange={handleChange}
-                  placeholder="Enter details (optional)"
-                  className="w-full p-2 border border-gray-300 rounded-lg"
-                  rows={3}
-                />
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">Description (Optional)</label>
+                <div className="relative">
+                  <div className="absolute top-3 left-3 pointer-events-none">
+                    <FileText size={18} className="text-slate-400" />
+                  </div>
+                  <textarea
+                    name="description"
+                    value={form.description}
+                    onChange={handleChange}
+                    placeholder="Add notes regarding this transaction..."
+                    rows={3}
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
+                  />
+                </div>
               </div>
 
-              {/* Submit */}
-              <Button variant="contained" type="submit" fullWidth
-                sx={{
-                  // py: 1.2,
-                  borderRadius: "0.5rem",
-                  backgroundColor: "#2563eb", // blue-600
-                  "&:hover": {
-                    backgroundColor: "#1d4ed8", // blue-700
-                  },
-                }}
-              >Add Transaction</Button>
+              {/* Submit Button */}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white shadow-lg transition-all ${
+                    form.type === 'credit' 
+                      ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200' 
+                      : 'bg-rose-600 hover:bg-rose-700 shadow-rose-200'
+                  } disabled:opacity-70 disabled:cursor-not-allowed`}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 size={20} className="animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={20} />
+                      Save Transaction
+                    </>
+                  )}
+                </button>
+              </div>
             </form>
           </div>
         </div>
+
+        {/* MUI Snackbar for Success Message */}
         <Snackbar
-                  open={open}
-                  autoHideDuration={3000}
-                  onClose={() => setOpen(false)}
-                  anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-                >
-                  <Alert
-                    severity="success"
-                    onClose={() => setOpen(false)}
-                    sx={{ width: "100%" }}
-                  >
-                    Transaction added successfully!
-                  </Alert>
-                </Snackbar>
+          open={open}
+          autoHideDuration={3000}
+          onClose={() => setOpen(false)}
+          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        >
+          <Alert
+            severity="success"
+            variant="filled"
+            onClose={() => setOpen(false)}
+            sx={{ width: "100%", borderRadius: 2 }}
+          >
+            Transaction added successfully!
+          </Alert>
+        </Snackbar>
       </div>
     </div>
   );
