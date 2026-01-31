@@ -20,8 +20,6 @@ const AddTransaction = () => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  
-  // ✅ State for Mobile Sidebar
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const [form, setForm] = useState({
@@ -31,6 +29,16 @@ const AddTransaction = () => {
     amount: "",
     description: "",
   });
+
+  const resetForm = () => {
+    setForm({
+      type: "debit",
+      method: "",
+      category: "",
+      amount: "",
+      description: "",
+    });
+  };
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -42,17 +50,18 @@ const AddTransaction = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (Number(form.amount) <= 0) {
+      alert("Amount must be greater than 0");
+      resetForm();
+      return;
+    }
+
     setLoading(true);
     try {
       await axiosInstance.post("/api/transactions", form);
       setOpen(true);
-      setForm({
-        type: "debit",
-        method: "",
-        category: "",
-        amount: "",
-        description: "",
-      });
+      resetForm();
     } catch (error) {
       console.error(error);
       if (error.response?.status === 401) {
@@ -65,35 +74,26 @@ const AddTransaction = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 relative">
-      
-      {/* ✅ Sidebar with State Props */}
-      <Sidebar 
-        isOpen={isSidebarOpen} 
-        onClose={() => setIsSidebarOpen(false)} 
-      />
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-      {/* Main Content */}
       <div className="flex-1 md:ml-64 transition-all duration-300">
-        
-        {/* ✅ Navbar with Toggle Callback */}
-        <Navbar 
-          title="New Entry" 
-          onMenuClick={() => setIsSidebarOpen(true)} 
-        />
+        <Navbar title="New Entry" onMenuClick={() => setIsSidebarOpen(true)} />
 
         <div className="flex justify-center items-start pt-6 md:pt-10 px-4 md:px-8 pb-10">
           <div className="bg-white shadow-sm border border-slate-200 rounded-2xl w-full max-w-2xl overflow-hidden">
-            
             <div className="bg-slate-50 border-b border-slate-100 p-6">
               <h2 className="text-xl font-bold text-slate-800">Add Transaction</h2>
-              <p className="text-sm text-slate-500 mt-1">Record a new income or expense details below.</p>
+              <p className="text-sm text-slate-500 mt-1">
+                Record a new income or expense details below.
+              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6">
-              
-              {/* Type Selection */}
+              {/* Type */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-3">Transaction Type</label>
+                <label className="block text-sm font-medium text-slate-700 mb-3">
+                  Transaction Type
+                </label>
                 <div className="grid grid-cols-2 gap-4">
                   <button
                     type="button"
@@ -123,10 +123,12 @@ const AddTransaction = () => {
                 </div>
               </div>
 
+              {/* Amount & Category */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Amount */}
-                <div className="col-span-1">
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Amount</label>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Amount
+                  </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <IndianRupee size={18} className="text-slate-400" />
@@ -134,6 +136,8 @@ const AddTransaction = () => {
                     <input
                       type="number"
                       name="amount"
+                      min="1"
+                      step="1"
                       value={form.amount}
                       onChange={handleChange}
                       placeholder="0.00"
@@ -143,9 +147,10 @@ const AddTransaction = () => {
                   </div>
                 </div>
 
-                {/* Category */}
-                <div className="col-span-1">
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Category</label>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                    Category
+                  </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                       <Tags size={18} className="text-slate-400" />
@@ -165,7 +170,9 @@ const AddTransaction = () => {
 
               {/* Method */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Payment Method</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Payment Method
+                </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Wallet size={18} className="text-slate-400" />
@@ -188,7 +195,9 @@ const AddTransaction = () => {
 
               {/* Description */}
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Description (Optional)</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Description (Optional)
+                </label>
                 <div className="relative">
                   <div className="absolute top-3 left-3 pointer-events-none">
                     <FileText size={18} className="text-slate-400" />
@@ -204,15 +213,15 @@ const AddTransaction = () => {
                 </div>
               </div>
 
-              {/* Submit Button */}
+              {/* Submit */}
               <div className="pt-2">
                 <button
                   type="submit"
                   disabled={loading}
                   className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white shadow-lg transition-all ${
-                    form.type === 'credit' 
-                      ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200' 
-                      : 'bg-rose-600 hover:bg-rose-700 shadow-rose-200'
+                    form.type === "credit"
+                      ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200"
+                      : "bg-rose-600 hover:bg-rose-700 shadow-rose-200"
                   } disabled:opacity-70 disabled:cursor-not-allowed`}
                 >
                   {loading ? (
