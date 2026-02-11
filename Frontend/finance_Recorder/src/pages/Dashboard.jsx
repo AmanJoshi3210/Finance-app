@@ -12,7 +12,10 @@ import {
   Target, 
   ArrowRight,
   Plus,
-  MoreHorizontal
+  MoreHorizontal,
+  Flame,
+  Sparkles,
+  AlertTriangle
 } from "lucide-react";
 
 export default function Dashboard() {
@@ -24,6 +27,47 @@ export default function Dashboard() {
   const [userData, setUserData] = useState({ totalCredit: 0, totalDebit: 0, monthlyLimit: 0 });
   const [transactions, setTransactions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  const getDailySpendingStreak = (items) => {
+    const debitDates = [...new Set(
+      items
+        .filter((item) => item.type !== "credit")
+        .map((item) => new Date(item.date).toDateString())
+    )].sort((a, b) => new Date(b) - new Date(a));
+
+    if (!debitDates.length) return 0;
+
+    let streak = 0;
+    let cursor = new Date();
+    cursor.setHours(0, 0, 0, 0);
+
+    for (const day of debitDates) {
+      const txDate = new Date(day);
+      txDate.setHours(0, 0, 0, 0);
+
+      const diff = Math.round((cursor - txDate) / (1000 * 60 * 60 * 24));
+      if (diff === streak) {
+        streak += 1;
+      } else if (diff > streak) {
+        break;
+      }
+    }
+
+    return streak;
+  };
+
+  const getTopExpenseCategory = (items) => {
+    const categoryTotals = items
+      .filter((item) => item.type !== "credit")
+      .reduce((acc, item) => {
+        const key = item.category || "Other";
+        acc[key] = (acc[key] || 0) + Number(item.amount || 0);
+        return acc;
+      }, {});
+
+    const ranked = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+    return ranked[0] || ["None yet", 0];
+  };
 
   useEffect(() => {
     if (authLoading || !user) return; 
@@ -70,6 +114,15 @@ export default function Dashboard() {
   const budgetPercentage = userData.monthlyLimit > 0 
     ? Math.min(((userData.totalDebit || 0) / userData.monthlyLimit) * 100, 100)
     : 0;
+
+  const [topCategory, topCategorySpend] = getTopExpenseCategory(transactions);
+  const spendingStreak = getDailySpendingStreak(transactions);
+  const savingsRate = userData.totalCredit > 0
+    ? Math.max((((userData.totalCredit - userData.totalDebit) / userData.totalCredit) * 100), 0)
+    : 0;
+  const monthlyTarget = userData.monthlyLimit > 0 ? userData.monthlyLimit : (userData.totalDebit || 0);
+  const projectedSpend = monthlyTarget > 0 ? (userData.totalDebit || 0) * 1.15 : 0;
+  const isOverspendingRisk = projectedSpend > monthlyTarget && monthlyTarget > 0;
 
   if (authLoading || isLoading) {
     return (
@@ -224,6 +277,45 @@ export default function Dashboard() {
                   <p>No transactions recorded yet.</p>
                 </div>
               )}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+            <div className="bg-gradient-to-br from-indigo-600 to-blue-600 text-white rounded-2xl p-6 shadow-lg shadow-indigo-500/20">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold">Finance Personality</h3>
+                <Sparkles size={18} />
+              </div>
+              <p className="text-2xl font-bold">
+                {savingsRate > 35 ? "Wealth Builder" : savingsRate > 15 ? "Balanced Planner" : "Growth Starter"}
+              </p>
+              <p className="text-sm text-indigo-100 mt-2">
+                You are saving {savingsRate.toFixed(1)}% of your income. Keep this pace to improve long-term stability.
+              </p>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold text-slate-800">Top Spend Zone</h3>
+                <Flame size={18} className="text-orange-500" />
+              </div>
+              <p className="text-2xl font-bold text-slate-800">{topCategory}</p>
+              <p className="text-sm text-slate-500 mt-2">
+                {formatCurrency(topCategorySpend)} spent in this category. Spending streak: <strong>{spendingStreak} day(s)</strong>.
+              </p>
+            </div>
+
+            <div className={`rounded-2xl p-6 shadow-sm border ${isOverspendingRisk ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"}`}>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className={`font-semibold ${isOverspendingRisk ? "text-red-700" : "text-emerald-700"}`}>Budget Forecast</h3>
+                <AlertTriangle size={18} className={isOverspendingRisk ? "text-red-600" : "text-emerald-600"} />
+              </div>
+              <p className={`text-2xl font-bold ${isOverspendingRisk ? "text-red-700" : "text-emerald-700"}`}>
+                {isOverspendingRisk ? "At Risk" : "On Track"}
+              </p>
+              <p className={`text-sm mt-2 ${isOverspendingRisk ? "text-red-600" : "text-emerald-600"}`}>
+                Projected spend is {formatCurrency(projectedSpend)} vs target {formatCurrency(monthlyTarget)}.
+              </p>
             </div>
           </div>
 
