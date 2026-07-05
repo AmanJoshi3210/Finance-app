@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-  baseURL: "https://finance-app-nh7c.onrender.com",
+  baseURL: import.meta.env.VITE_API_URL || "https://finance-app-nh7c.onrender.com",
 });
 
 axiosInstance.interceptors.request.use((config) => {

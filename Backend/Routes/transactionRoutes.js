@@ -3,6 +3,7 @@ import authMiddleware from "../middleware/authMiddleware.js";
 import {
   addTransaction,
   updateTransaction,
+  deleteTransaction,
   getUserTransactions,
   addOrUpdateMonthlyLimit,
   getMonthlyLimit,
@@ -10,10 +11,13 @@ import {
 
 const router = express.Router();
 
-router.post("/", authMiddleware, addTransaction);              // Add new transaction
-// router.put("/:id", authMiddleware, updateTransaction);         // Update transaction
-router.get("/", authMiddleware, getUserTransactions);
-router.get("/monthly-limit", authMiddleware, getMonthlyLimit);          // Get all transactions
-router.put("/monthly-limit", authMiddleware, addOrUpdateMonthlyLimit);          // Get all transactions
+router.post("/", authMiddleware, addTransaction);                       // Add new transaction
+router.get("/", authMiddleware, getUserTransactions);                   // Get all transactions
+router.get("/monthly-limit", authMiddleware, getMonthlyLimit);          // Get monthly limit
+router.put("/monthly-limit", authMiddleware, addOrUpdateMonthlyLimit);  // Update monthly limit
+
+// Keep these below the literal routes above so "/monthly-limit" never matches ":id"
+router.put("/:id", authMiddleware, updateTransaction);                  // Update transaction
+router.delete("/:id", authMiddleware, deleteTransaction);               // Delete transaction
 
 export default router;

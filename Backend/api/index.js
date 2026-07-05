@@ -7,6 +7,8 @@ import connectDB from "../connection/Connection.js";
 import userRoutes from "../Routes/userRoutes.js";
 import userDataRoutes from "../Routes/userDataRoutes.js";
 import transactionRoutes from "../Routes/transactionRoutes.js";
+import cronRoutes from "../Routes/cronRoutes.js";
+import monthlySummaryRoutes from "../Routes/monthlySummaryRoutes.js";
 
 dotenv.config();
 
@@ -15,6 +17,7 @@ const allowedOrigins = [
   "https://finance-app-rouge-eight.vercel.app",
   "https://finance-app-git-main-amanjoshi3210s-projects.vercel.app",
   "https://finance-56h50jgwb-amanjoshi3210s-projects.vercel.app",
+  "http://localhost:5173",
 ];
 
 app.use(
@@ -46,6 +49,8 @@ app.get("/", (req, res) => {
 app.use("/api/users", userRoutes);
 app.use("/api/userdata", userDataRoutes);
 app.use("/api/transactions", transactionRoutes);
+app.use("/api/cron", cronRoutes);
+app.use("/api/monthly-summary", monthlySummaryRoutes);
 
 // 🚀 IMPORTANT: export app (NO listen)
 // export default app;

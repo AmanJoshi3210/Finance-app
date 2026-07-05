@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
+import TransactionFormModal from "../components/TransactionFormModal";
 import axiosInstance from "../api/axiosInstance";
 import { useNavigate } from "react-router-dom";
 import {
@@ -12,6 +13,8 @@ import {
   Calendar,
   Wallet,
   SlidersHorizontal,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 
 export default function Transactions() {
@@ -19,6 +22,8 @@ export default function Transactions() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [editingTransaction, setEditingTransaction] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
 
   // ✅ State for Mobile Sidebar
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -72,6 +77,32 @@ export default function Transactions() {
   const formatDate = (dateString) => {
     const options = { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" };
     return new Date(dateString).toLocaleDateString("en-IN", options);
+  };
+
+  const handleEditSaved = (updatedTransaction) => {
+    setTransactions((prev) =>
+      prev.map((t) => (t._id === updatedTransaction._id ? updatedTransaction : t))
+    );
+    setEditingTransaction(null);
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Delete this transaction? This cannot be undone.")) return;
+
+    setDeletingId(id);
+    try {
+      await axiosInstance.delete(`/api/transactions/${id}`);
+      setTransactions((prev) => prev.filter((t) => t._id !== id));
+    } catch (error) {
+      console.error(error);
+      if (error.response?.status === 401) {
+        navigate("/login");
+      } else {
+        alert(error.response?.data?.message || "Could not delete transaction. Please try again.");
+      }
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -170,15 +201,41 @@ export default function Transactions() {
                         </div>
                       </div>
 
-                      {/* Right: Amount & Date */}
-                      <div className="text-right flex flex-row sm:flex-col justify-between items-center sm:items-end w-full sm:w-auto mt-2 sm:mt-0">
-                        <span className={`text-lg font-bold tracking-tight ${isCredit ? "text-emerald-600" : "text-slate-800"}`}>
-                          {isCredit ? "+" : "-"} {formatCurrency(t.amount)}
-                        </span>
+                      {/* Right: Amount, Date & Actions */}
+                      <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                        <div className="text-right flex flex-row sm:flex-col justify-between items-center sm:items-end gap-2 sm:gap-0">
+                          <span className={`text-lg font-bold tracking-tight ${isCredit ? "text-emerald-600" : "text-slate-800"}`}>
+                            {isCredit ? "+" : "-"} {formatCurrency(t.amount)}
+                          </span>
 
-                        <div className="flex items-center gap-1 text-xs text-slate-400 font-medium mt-1">
-                          <Calendar size={12} />
-                          {formatDate(t.date)}
+                          <div className="flex items-center gap-1 text-xs text-slate-400 font-medium mt-1">
+                            <Calendar size={12} />
+                            {formatDate(t.date)}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setEditingTransaction(t)}
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            aria-label="Edit transaction"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(t._id)}
+                            disabled={deletingId === t._id}
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                            aria-label="Delete transaction"
+                          >
+                            {deletingId === t._id ? (
+                              <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                              <Trash2 size={16} />
+                            )}
+                          </button>
                         </div>
                       </div>
                     </div>
@@ -196,6 +253,16 @@ export default function Transactions() {
           )}
         </div>
       </div>
+
+      {editingTransaction && (
+        <TransactionFormModal
+          mode="edit"
+          transaction={editingTransaction}
+          overlay
+          onClose={() => setEditingTransaction(null)}
+          onSaved={handleEditSaved}
+        />
+      )}
     </div>
   );
 }

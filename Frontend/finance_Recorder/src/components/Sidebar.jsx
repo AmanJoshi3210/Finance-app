@@ -1,12 +1,13 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { 
-  Home, 
-  LayoutDashboard, 
-  List, 
-  PlusCircle, 
-  Settings, 
+import {
+  Home,
+  LayoutDashboard,
+  List,
+  PlusCircle,
+  Settings,
+  History,
   LogOut,
   X // Import Close icon
 } from "lucide-react";
@@ -21,6 +22,7 @@ export default function Sidebar({ isOpen, onClose }) {
     { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
     { name: "Transactions", path: "/transactions", icon: <List size={20} /> },
     { name: "Add Transaction", path: "/add", icon: <PlusCircle size={20} /> },
+    { name: "Monthly History", path: "/previous-months-summary", icon: <History size={20} /> },
     { name: "Settings", path: "/settings", icon: <Settings size={20} /> },
   ];
 

@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import AddTransaction from "./pages/AddTransaction";
 import Settings from "./pages/Settings";
+import PreviousMonthsSummary from "./pages/PreviousMonthsSummary";
 
 function App() {
   return (
@@ -52,10 +53,10 @@ function App() {
           }
         />
         <Route
-          path="/Previous-Months-Summary"
+          path="/previous-months-summary"
           element={
             <ProtectedRoute>
-              <Settings />
+              <PreviousMonthsSummary />
             </ProtectedRoute>
           }
         />
