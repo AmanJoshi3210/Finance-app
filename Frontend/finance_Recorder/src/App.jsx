@@ -1,6 +1,5 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 import Home from "./pages/Home";
@@ -10,11 +9,12 @@ import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import AddTransaction from "./pages/AddTransaction";
 import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 import PreviousMonthsSummary from "./pages/PreviousMonthsSummary";
 
 function App() {
   return (
-    <AuthProvider>
+    <>
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
@@ -53,6 +53,14 @@ function App() {
           }
         />
         <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/previous-months-summary"
           element={
             <ProtectedRoute>
@@ -61,7 +69,7 @@ function App() {
           }
         />
       </Routes>
-    </AuthProvider>
+    </>
   );
 }
 

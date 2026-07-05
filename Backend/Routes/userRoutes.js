@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.get("/verify", authMiddleware, async (req, res) => {
   try {
-    const user = await User.findById(req.user.userId).select("name email");
+    const user = await User.findById(req.user.userId).select("name email createdAt");
     if (!user) return res.status(404).json({ message: "User not found" });
 
     res.json({
@@ -15,6 +15,7 @@ router.get("/verify", authMiddleware, async (req, res) => {
       userId: req.user.userId,
       name: user.name, // ✅ send name
       email: user.email,
+      createdAt: user.createdAt,
     });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
