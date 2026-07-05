@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import TransactionFormModal from "../components/TransactionFormModal";
+import ConfirmDialog from "../components/ConfirmDialog";
 import axiosInstance from "../api/axiosInstance";
 import { useNavigate } from "react-router-dom";
 import {
@@ -24,6 +25,7 @@ export default function Transactions() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
+  const [confirmDialog, setConfirmDialog] = useState(null);
 
   // ✅ State for Mobile Sidebar
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -86,13 +88,13 @@ export default function Transactions() {
     setEditingTransaction(null);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this transaction? This cannot be undone.")) return;
-
+  const performDelete = async (id) => {
     setDeletingId(id);
+    setConfirmDialog((prev) => (prev ? { ...prev, loading: true } : prev));
     try {
       await axiosInstance.delete(`/api/transactions/${id}`);
       setTransactions((prev) => prev.filter((t) => t._id !== id));
+      setConfirmDialog(null);
     } catch (error) {
       console.error(error);
       if (error.response?.status === 401) {
@@ -100,19 +102,41 @@ export default function Transactions() {
       } else {
         alert(error.response?.data?.message || "Could not delete transaction. Please try again.");
       }
+      setConfirmDialog(null);
     } finally {
       setDeletingId(null);
     }
   };
 
+  const handleDelete = (id) => {
+    setConfirmDialog({
+      title: "Delete transaction?",
+      message: "This action cannot be undone.",
+      confirmLabel: "Delete",
+      danger: true,
+      onConfirm: () => performDelete(id),
+    });
+  };
+
+  const handleEditClick = (transaction) => {
+    setConfirmDialog({
+      title: "Edit transaction?",
+      message: "You're about to edit this transaction's details.",
+      confirmLabel: "Edit",
+      danger: false,
+      onConfirm: () => {
+        setEditingTransaction(transaction);
+        setConfirmDialog(null);
+      },
+    });
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 relative">
-      {/* ✅ Sidebar with State Props */}
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
       {/* Main Content Area */}
       <div className="flex-1 md:ml-64 transition-all duration-300">
-        {/* ✅ Navbar with Toggle Callback */}
         <Navbar title="Transaction History" onMenuClick={() => setIsSidebarOpen(true)} />
 
         <div className="max-w-5xl mx-auto p-6 md:p-8">
@@ -217,7 +241,7 @@ export default function Transactions() {
                         <div className="flex items-center gap-1">
                           <button
                             type="button"
-                            onClick={() => setEditingTransaction(t)}
+                            onClick={() => handleEditClick(t)}
                             className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                             aria-label="Edit transaction"
                           >
@@ -261,6 +285,18 @@ export default function Transactions() {
           overlay
           onClose={() => setEditingTransaction(null)}
           onSaved={handleEditSaved}
+        />
+      )}
+
+      {confirmDialog && (
+        <ConfirmDialog
+          title={confirmDialog.title}
+          message={confirmDialog.message}
+          confirmLabel={confirmDialog.confirmLabel}
+          danger={confirmDialog.danger}
+          loading={confirmDialog.loading}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={() => setConfirmDialog(null)}
         />
       )}
     </div>
