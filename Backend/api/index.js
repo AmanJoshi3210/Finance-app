@@ -13,6 +13,11 @@ import monthlySummaryRoutes from "../Routes/monthlySummaryRoutes.js";
 dotenv.config();
 
 const app = express();
+
+// This is a pure JSON API whose data mutates on every add/edit/delete — never
+// let the browser cache-validate (304) a response and serve stale data.
+app.set("etag", false);
+
 const allowedOrigins = [
   "https://finance-app-rouge-eight.vercel.app",
   "https://finance-app-git-main-amanjoshi3210s-projects.vercel.app",

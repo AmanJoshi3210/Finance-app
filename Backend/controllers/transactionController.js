@@ -152,11 +152,55 @@ export const deleteTransaction = async (req, res) => {
   }
 };
 
-// 📄 Get all transactions for a user
+// 📄 Get a page of transactions for a user (filterable by type/search)
 export const getUserTransactions = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const transactions = await Transaction.find({ userId }).sort({ date: -1 });
+    const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
+    const { type, search } = req.query;
+
+    const filter = { userId };
+    if (type && type !== "all") {
+      filter.type = type;
+    }
+    if (search && search.trim()) {
+      // Escape regex metacharacters so user input can't break/DoS the pattern
+      const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const regex = new RegExp(escaped, "i");
+      filter.$or = [{ category: regex }, { description: regex }, { method: regex }];
+    }
+
+    const [transactions, total] = await Promise.all([
+      Transaction.find(filter)
+        .sort({ date: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      Transaction.countDocuments(filter),
+    ]);
+
+    res.json({
+      transactions,
+      total,
+      page,
+      limit,
+      totalPages: Math.max(Math.ceil(total / limit), 1),
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 📄 Get only the most recent N transactions (lightweight, for dashboard preview)
+export const getRecentTransactions = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 5, 1), 20);
+
+    const transactions = await Transaction.find({ userId })
+      .sort({ date: -1 })
+      .limit(limit);
+
     res.json(transactions);
   } catch (error) {
     res.status(500).json({ message: error.message });

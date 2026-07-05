@@ -1,9 +1,10 @@
 // src/pages/Transactions.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import TransactionFormModal from "../components/TransactionFormModal";
 import ConfirmDialog from "../components/ConfirmDialog";
+import Pagination from "../components/Pagination";
 import axiosInstance from "../api/axiosInstance";
 import { useNavigate } from "react-router-dom";
 import {
@@ -18,11 +19,17 @@ import {
   Trash2,
 } from "lucide-react";
 
+const PAGE_SIZE = 5;
+
 export default function Transactions() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
@@ -32,39 +39,50 @@ export default function Transactions() {
 
   const navigate = useNavigate();
 
+  // Debounce the search box so we don't hit the API on every keystroke
   useEffect(() => {
-    const fetchTransactions = async () => {
-      try {
-        const res = await axiosInstance.get("/api/transactions");
+    const handle = setTimeout(() => setDebouncedQuery(query.trim()), 400);
+    return () => clearTimeout(handle);
+  }, [query]);
 
-        // Sort by Date Descending (Newest First)
-        setTransactions([...res.data].sort((a, b) => new Date(b.date) - new Date(a.date)));
+  // Filters changed → the current page of results is no longer valid, restart at page 1
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedQuery, typeFilter]);
+
+  const fetchTransactions = useCallback(
+    async (targetPage) => {
+      setLoading(true);
+      try {
+        const res = await axiosInstance.get("/api/transactions", {
+          params: {
+            page: targetPage,
+            limit: PAGE_SIZE,
+            type: typeFilter === "all" ? undefined : typeFilter,
+            search: debouncedQuery || undefined,
+          },
+        });
+
+        setTransactions(res.data.transactions);
+        setTotalPages(res.data.totalPages);
+        setTotalCount(res.data.total);
+        return res.data.transactions.length;
       } catch (error) {
         console.error(error);
         if (error.response?.status === 401) {
           navigate("/login");
         }
+        return 0;
       } finally {
         setLoading(false);
       }
-    };
+    },
+    [navigate, typeFilter, debouncedQuery]
+  );
 
-    fetchTransactions();
-  }, [navigate]);
-
-  const filteredTransactions = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    return transactions.filter((tx) => {
-      const matchesType = typeFilter === "all" ? true : tx.type === typeFilter;
-      const matchesQuery =
-        !normalizedQuery ||
-        [tx.category, tx.description, tx.method, tx.type]
-          .filter(Boolean)
-          .some((value) => value.toLowerCase().includes(normalizedQuery));
-
-      return matchesType && matchesQuery;
-    });
-  }, [transactions, query, typeFilter]);
+  useEffect(() => {
+    fetchTransactions(page);
+  }, [fetchTransactions, page]);
 
   // Helper to format currency
   const formatCurrency = (amount) => {
@@ -93,8 +111,14 @@ export default function Transactions() {
     setConfirmDialog((prev) => (prev ? { ...prev, loading: true } : prev));
     try {
       await axiosInstance.delete(`/api/transactions/${id}`);
-      setTransactions((prev) => prev.filter((t) => t._id !== id));
       setConfirmDialog(null);
+
+      // Re-fetch so pagination/totals stay accurate; back up a page if the
+      // deleted row was the last one on a page beyond the first.
+      const remaining = await fetchTransactions(page);
+      if (remaining === 0 && page > 1) {
+        setPage((p) => p - 1);
+      }
     } catch (error) {
       console.error(error);
       if (error.response?.status === 401) {
@@ -187,7 +211,7 @@ export default function Transactions() {
           )}
 
           {/* No Data State */}
-          {!loading && filteredTransactions.length === 0 && (
+          {!loading && transactions.length === 0 && (
             <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 shadow-sm">
               <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Wallet className="w-8 h-8 text-slate-400" />
@@ -198,10 +222,10 @@ export default function Transactions() {
           )}
 
           {/* Transactions List */}
-          {!loading && filteredTransactions.length > 0 && (
+          {!loading && transactions.length > 0 && (
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="divide-y divide-slate-100">
-                {filteredTransactions.map((t) => {
+                {transactions.map((t) => {
                   const isCredit = t.type === "credit";
 
                   return (
@@ -269,11 +293,14 @@ export default function Transactions() {
             </div>
           )}
 
-          {/* Pagination / Footer info (Static for now) */}
-          {!loading && filteredTransactions.length > 0 && (
-            <div className="mt-4 text-center text-xs text-slate-400">
-              Showing {filteredTransactions.length} of {transactions.length} records
-            </div>
+          {!loading && transactions.length > 0 && (
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={totalCount}
+              pageSize={PAGE_SIZE}
+              onPageChange={setPage}
+            />
           )}
         </div>
       </div>

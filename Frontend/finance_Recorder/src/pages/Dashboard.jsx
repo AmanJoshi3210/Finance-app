@@ -74,20 +74,17 @@ export default function Dashboard() {
 
     const fetchDashboardData = async () => {
       try {
+        // Dashboard only needs the aggregate totals (from the UserData
+        // summary collection) plus a small preview of recent activity —
+        // never the full transaction history.
         const [userRes, txRes] = await Promise.all([
           axiosInstance.get("/api/userdata"),
-          axiosInstance.get("/api/transactions"),
+          axiosInstance.get("/api/transactions/recent", { params: { limit: 5 } }),
         ]);
 
         setUserData(userRes.data);
+        setTransactions(txRes.data);
 
-        // Sort by Date Descending (Newest First) then take top 5
-        const sortedTransactions = txRes.data.sort((a, b) => {
-          return new Date(b.date) - new Date(a.date);
-        });
-
-        setTransactions(sortedTransactions.slice(0, 5));
-        
       } catch (err) {
         console.error("Dashboard fetch error:", err.response || err.message);
       } finally {
@@ -117,6 +114,9 @@ export default function Dashboard() {
 
   const [topCategory, topCategorySpend] = getTopExpenseCategory(transactions);
   const spendingStreak = getDailySpendingStreak(transactions);
+  // Only tease a couple of entries here — the Transactions page (with
+  // pagination) is the place to browse full history.
+  const recentTransactionsPreview = transactions.slice(0, 2);
   const savingsRate = userData.totalCredit > 0
     ? Math.max((((userData.totalCredit - userData.totalDebit) / userData.totalCredit) * 100), 0)
     : 0;
@@ -244,8 +244,8 @@ export default function Dashboard() {
             </div>
 
             <div className="divide-y divide-slate-100">
-              {transactions.length > 0 ? (
-                transactions.map((t) => (
+              {recentTransactionsPreview.length > 0 ? (
+                recentTransactionsPreview.map((t) => (
                   <div key={t._id} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
                     <div className="flex items-center gap-4">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${

@@ -36,4 +36,8 @@ const transactionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Supports both the paginated history query (userId + date sort) and the
+// dashboard's "recent transactions" lookup without a full collection scan.
+transactionSchema.index({ userId: 1, date: -1 });
+
 export default mongoose.model("Transaction", transactionSchema);
