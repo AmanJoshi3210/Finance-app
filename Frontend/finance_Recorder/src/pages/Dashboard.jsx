@@ -28,6 +28,7 @@ export default function Dashboard() {
   const [transactions, setTransactions] = useState([]);
   const [monthlyTrend, setMonthlyTrend] = useState([]);
   const [categoryTotals, setCategoryTotals] = useState({});
+  const [categoryBudgets, setCategoryBudgets] = useState({});
   const [isLoading, setIsLoading] = useState(true);
 
   const getCategoryTotals = (items) =>
@@ -49,17 +50,21 @@ export default function Dashboard() {
         // never the full transaction history. The trend/category charts
         // pull their own slices (a monthly aggregation, and a wider-but-still-
         // capped page for category totals) alongside that.
-        const [userRes, txRes, trendRes, categoryRes] = await Promise.all([
+        const [userRes, txRes, trendRes, categoryRes, categoryBudgetsRes] = await Promise.all([
           axiosInstance.get("/api/userdata"),
           axiosInstance.get("/api/transactions/recent", { params: { limit: 5 } }),
           axiosInstance.get("/api/transactions/monthly-trend"),
           axiosInstance.get("/api/transactions", { params: { page: 1, limit: 100 } }),
+          axiosInstance.get("/api/category-budgets"),
         ]);
 
         setUserData(userRes.data);
         setTransactions(txRes.data);
         setMonthlyTrend(trendRes.data);
         setCategoryTotals(getCategoryTotals(categoryRes.data.transactions || []));
+        setCategoryBudgets(
+          categoryBudgetsRes.data.reduce((acc, b) => ({ ...acc, [b.category]: b.limit }), {})
+        );
 
       } catch (err) {
         console.error("Dashboard fetch error:", err.response || err.message);
@@ -253,7 +258,7 @@ export default function Dashboard() {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
             <SpendingTrendChart data={monthlyTrend} formatCurrency={formatCurrency} />
-            <CategoryBreakdownChart categoryTotals={categoryTotals} formatCurrency={formatCurrency} />
+            <CategoryBreakdownChart categoryTotals={categoryTotals} categoryBudgets={categoryBudgets} formatCurrency={formatCurrency} />
           </div>
 
           <div className="grid grid-cols-1 gap-6 mt-6">

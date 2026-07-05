@@ -48,10 +48,12 @@ function buildSlices(categoryTotals) {
   return [...top.map(([name, value]) => ({ name, value })), { name: "Other", value: otherTotal }];
 }
 
-export default function CategoryBreakdownChart({ categoryTotals, formatCurrency }) {
+export default function CategoryBreakdownChart({ categoryTotals, categoryBudgets, formatCurrency }) {
   const slices = buildSlices(categoryTotals || {});
   const hasData = slices.length > 0;
   const total = slices.reduce((sum, s) => sum + s.value, 0);
+
+  const budgetedCategories = Object.entries(categoryBudgets || {}).filter(([, limit]) => limit > 0);
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm h-full">
@@ -96,6 +98,34 @@ export default function CategoryBreakdownChart({ categoryTotals, formatCurrency 
         <p className="text-center text-sm text-slate-500 mt-1">
           Total spent: <span className="font-semibold text-slate-700">{formatCurrency(total)}</span>
         </p>
+      )}
+
+      {budgetedCategories.length > 0 && (
+        <div className="mt-4 pt-4 border-t border-slate-100 space-y-3">
+          {budgetedCategories.map(([category, limit]) => {
+            const spent = categoryTotals?.[category] || 0;
+            const percentage = Math.min(Math.round((spent / limit) * 100), 999);
+            const isOver = percentage >= 90;
+
+            return (
+              <div key={category}>
+                <div className="flex items-center justify-between text-xs mb-1">
+                  <span className="font-medium text-slate-600">{category}</span>
+                  <span className={`font-medium ${isOver ? "text-red-600" : "text-slate-500"}`}>
+                    {formatCurrency(spent)} / {formatCurrency(limit)}
+                    {isOver && " ⚠"}
+                  </span>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-1.5">
+                  <div
+                    className={`h-1.5 rounded-full transition-all duration-500 ${isOver ? "bg-red-500" : "bg-indigo-500"}`}
+                    style={{ width: `${Math.min(percentage, 100)}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );

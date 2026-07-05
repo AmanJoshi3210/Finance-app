@@ -18,9 +18,12 @@ import {
   Smartphone,
   Lock,
   Eye,
+  Trash2,
+  Tag,
 } from "lucide-react";
 
 const SETTINGS_KEY = "finance_app_settings";
+const currentMonthString = () => new Date().toISOString().slice(0, 7);
 
 export default function Settings() {
   const [monthlyLimit, setMonthlyLimit] = useState("");
@@ -30,6 +33,9 @@ export default function Settings() {
   const [snackMessage, setSnackMessage] = useState("Settings updated successfully!");
   const [snackSeverity, setSnackSeverity] = useState("success");
   const [activeSection, setActiveSection] = useState("budget");
+
+  const [categories, setCategories] = useState([]);
+  const [categoryLimits, setCategoryLimits] = useState({}); // { [category]: { value, budgetId, saving } }
 
   const [profile, setProfile] = useState({
     fullName: "",
@@ -57,12 +63,24 @@ export default function Settings() {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const [budgetRes, localSettings] = await Promise.all([
+        const [budgetRes, categoriesRes, categoryBudgetsRes, localSettings] = await Promise.all([
           axiosInstance.get("/api/transactions/monthly-limit"),
+          axiosInstance.get("/api/transactions/categories"),
+          axiosInstance.get("/api/category-budgets", { params: { month: currentMonthString() } }),
           Promise.resolve(localStorage.getItem(SETTINGS_KEY)),
         ]);
 
         setMonthlyLimit(budgetRes.data.monthlyLimit || "");
+        setCategories(categoriesRes.data);
+
+        const limits = {};
+        for (const cat of categoriesRes.data) {
+          limits[cat] = { value: "", budgetId: null, saving: false };
+        }
+        for (const budget of categoryBudgetsRes.data) {
+          limits[budget.category] = { value: budget.limit, budgetId: budget._id, saving: false };
+        }
+        setCategoryLimits(limits);
 
         if (localSettings) {
           const parsed = JSON.parse(localSettings);
@@ -105,6 +123,60 @@ export default function Settings() {
       showToast("Could not update monthly limit. Please try again.", "error");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleCategoryLimitChange = (category, value) => {
+    setCategoryLimits((prev) => ({
+      ...prev,
+      [category]: { ...prev[category], value },
+    }));
+  };
+
+  const handleSaveCategoryLimit = async (category) => {
+    const row = categoryLimits[category];
+    if (!row || row.value === "" || Number(row.value) < 0) {
+      showToast("Please enter a valid limit.", "warning");
+      return;
+    }
+
+    setCategoryLimits((prev) => ({ ...prev, [category]: { ...prev[category], saving: true } }));
+    try {
+      const res = await axiosInstance.put("/api/category-budgets", {
+        category,
+        limit: Number(row.value),
+        month: currentMonthString(),
+      });
+      setCategoryLimits((prev) => ({
+        ...prev,
+        [category]: { value: res.data.limit, budgetId: res.data._id, saving: false },
+      }));
+      showToast(`Limit saved for ${category}.`);
+    } catch (error) {
+      if (error.response?.status === 401) navigate("/login");
+      console.error("Error saving category limit:", error);
+      showToast("Could not save category limit. Please try again.", "error");
+      setCategoryLimits((prev) => ({ ...prev, [category]: { ...prev[category], saving: false } }));
+    }
+  };
+
+  const handleDeleteCategoryLimit = async (category) => {
+    const row = categoryLimits[category];
+    if (!row?.budgetId) return;
+
+    setCategoryLimits((prev) => ({ ...prev, [category]: { ...prev[category], saving: true } }));
+    try {
+      await axiosInstance.delete(`/api/category-budgets/${row.budgetId}`);
+      setCategoryLimits((prev) => ({
+        ...prev,
+        [category]: { value: "", budgetId: null, saving: false },
+      }));
+      showToast(`Limit removed for ${category}.`);
+    } catch (error) {
+      if (error.response?.status === 401) navigate("/login");
+      console.error("Error deleting category limit:", error);
+      showToast("Could not remove category limit. Please try again.", "error");
+      setCategoryLimits((prev) => ({ ...prev, [category]: { ...prev[category], saving: false } }));
     }
   };
 
@@ -215,6 +287,7 @@ export default function Settings() {
 
             <div className="lg:col-span-2">
               {activeSection === "budget" && (
+                <div className="space-y-6">
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                   <div className="p-6 border-b border-slate-100">
                     <h3 className="text-lg font-bold text-slate-800">Monthly Budget</h3>
@@ -266,6 +339,74 @@ export default function Settings() {
                       </button>
                     </div>
                   </div>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                  <div className="p-6 border-b border-slate-100">
+                    <h3 className="text-lg font-bold text-slate-800">Category Limits</h3>
+                    <p className="text-sm text-slate-500 mt-1">
+                      Set a spending cap per category for this month ({currentMonthString()}).
+                    </p>
+                  </div>
+
+                  <div className="p-6 md:p-8">
+                    {categories.length === 0 ? (
+                      <p className="text-sm text-slate-500">
+                        Add some transactions with categories first, then come back here to set limits.
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {categories.map((category) => {
+                          const row = categoryLimits[category] || { value: "", budgetId: null, saving: false };
+                          return (
+                            <div
+                              key={category}
+                              className="flex items-center gap-3 p-3 border border-slate-200 rounded-xl bg-slate-50"
+                            >
+                              <div className="flex items-center gap-2 w-40 shrink-0">
+                                <Tag size={16} className="text-slate-400" />
+                                <span className="font-medium text-slate-700 truncate">{category}</span>
+                              </div>
+
+                              <div className="relative flex-1 max-w-xs">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                  <IndianRupee size={16} className="text-slate-400" />
+                                </div>
+                                <input
+                                  type="number"
+                                  value={row.value}
+                                  onChange={(e) => handleCategoryLimitChange(category, e.target.value)}
+                                  placeholder="No limit set"
+                                  className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm font-medium text-slate-900"
+                                />
+                              </div>
+
+                              <button
+                                onClick={() => handleSaveCategoryLimit(category)}
+                                disabled={row.saving}
+                                className="flex items-center gap-1.5 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+                              >
+                                {row.saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                                Save
+                              </button>
+
+                              {row.budgetId && (
+                                <button
+                                  onClick={() => handleDeleteCategoryLimit(category)}
+                                  disabled={row.saving}
+                                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                  aria-label={`Remove limit for ${category}`}
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
                 </div>
               )}
 

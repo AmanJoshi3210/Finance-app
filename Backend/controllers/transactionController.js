@@ -33,6 +33,25 @@ const applyUserDataDelta = async (userId, { creditDelta = 0, debitDelta = 0 }, s
   );
 };
 
+// Shared by the HTTP add-transaction handler and the recurring-transaction
+// job, so both paths create a transaction and update UserData totals
+// identically instead of duplicating the logic.
+export const createTransactionRecord = async (userId, { type, method, category, amount, description }, session) => {
+  const numericAmount = Number(amount);
+
+  const [transaction] = await Transaction.create(
+    [{ userId, type, method, category, amount: numericAmount, description }],
+    { session }
+  );
+
+  const creditDelta = type === "credit" ? numericAmount : 0;
+  const debitDelta = type === "debit" || type === "withdrawal" ? numericAmount : 0;
+
+  await applyUserDataDelta(userId, { creditDelta, debitDelta }, session);
+
+  return transaction;
+};
+
 export const addTransaction = async (req, res) => {
   const session = await mongoose.startSession();
   try {
@@ -42,23 +61,13 @@ export const addTransaction = async (req, res) => {
 
     const userId = req.user.userId;
     const { type, method, category, amount, description } = req.body;
-    const numericAmount = Number(amount);
 
     let transaction;
     await session.withTransaction(async () => {
-      // Create new transaction
-      [transaction] = await Transaction.create(
-        [{ userId, type, method, category, amount: numericAmount, description }],
-        { session }
-      );
-
       // Atomically increment the matching total so this can't be lost to a
       // race or interrupted mid-write (a stale read-modify-save previously
       // let one field's update silently disappear under concurrent requests).
-      const creditDelta = type === "credit" ? numericAmount : 0;
-      const debitDelta = type === "debit" || type === "withdrawal" ? numericAmount : 0;
-
-      await applyUserDataDelta(userId, { creditDelta, debitDelta }, session);
+      transaction = await createTransactionRecord(userId, { type, method, category, amount, description }, session);
     });
 
     res.status(201).json(transaction);
@@ -283,6 +292,19 @@ export const addOrUpdateMonthlyLimit = async (req, res) => {
   } catch (error) {
     console.error("Error updating monthly limit:", error);
     res.status(500).json({ message: "Server error while updating monthly limit" });
+  }
+};
+
+// Distinct categories the user has actually used, for suggesting per-category
+// budget rows in Settings without inventing a separate category-list source.
+export const getUserCategories = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const categories = await Transaction.distinct("category", { userId });
+    res.json(categories.filter(Boolean));
+  } catch (error) {
+    console.error("Get User Categories Error:", error);
+    res.status(500).json({ message: error.message });
   }
 };
 

@@ -1,5 +1,6 @@
 import express from "express";
 import { runMonthlySnapshot } from "../controllers/monthlySnapshotController.js";
+import { runDueRecurringTransactions } from "../controllers/recurringTransactionController.js";
 
 const router = express.Router();
 
@@ -17,6 +18,22 @@ router.get("/monthly-snapshot", async (req, res) => {
     res.json({ message: "Monthly snapshot complete", count: summaries.length });
   } catch (error) {
     console.error("Monthly Snapshot Cron Error:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get("/run-recurring", async (req, res) => {
+  try {
+    const secret = req.headers["x-cron-secret"];
+
+    if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const count = await runDueRecurringTransactions();
+    res.json({ message: "Recurring transactions run complete", count });
+  } catch (error) {
+    console.error("Run Recurring Transactions Cron Error:", error);
     res.status(500).json({ message: error.message });
   }
 });

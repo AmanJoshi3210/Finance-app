@@ -9,6 +9,7 @@ import {
   getMonthlyTrend,
   addOrUpdateMonthlyLimit,
   getMonthlyLimit,
+  getUserCategories,
 } from "../controllers/transactionController.js";
 
 const router = express.Router();
@@ -19,6 +20,7 @@ router.get("/recent", authMiddleware, getRecentTransactions);           // Get l
 router.get("/monthly-trend", authMiddleware, getMonthlyTrend);          // Get credit/debit totals grouped by month
 router.get("/monthly-limit", authMiddleware, getMonthlyLimit);          // Get monthly limit
 router.put("/monthly-limit", authMiddleware, addOrUpdateMonthlyLimit);  // Update monthly limit
+router.get("/categories", authMiddleware, getUserCategories);           // Get distinct categories used by the user
 
 // Keep these below the literal routes above so "/monthly-limit" never matches ":id"
 router.put("/:id", authMiddleware, updateTransaction);                  // Update transaction
