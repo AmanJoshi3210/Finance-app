@@ -3,6 +3,36 @@ import Transaction from "../Models/Transactions.js";
 import UserData from "../Models/UserData.js";
 // import User from "../Models/User.js"; // if you need to verify user existence
 
+// Applies a delta to UserData's running totals inside the caller's
+// transaction, clamping each total at 0 with an aggregation-pipeline update
+// so a delete/edit reversal can never drive it negative (e.g. totals drifted
+// out of sync with the ledger, or two edits race on the same transaction).
+const applyUserDataDelta = async (userId, { creditDelta = 0, debitDelta = 0 }, session) => {
+  if (!creditDelta && !debitDelta) return;
+
+  const userObjectId = new mongoose.Types.ObjectId(userId);
+
+  await UserData.findOneAndUpdate(
+    { userId: userObjectId },
+    [
+      {
+        $set: {
+          userId: userObjectId,
+          monthlyLimit: { $ifNull: ["$monthlyLimit", 0] },
+          totalCredit: {
+            $max: [{ $add: [{ $ifNull: ["$totalCredit", 0] }, creditDelta] }, 0],
+          },
+          totalDebit: {
+            $max: [{ $add: [{ $ifNull: ["$totalDebit", 0] }, debitDelta] }, 0],
+          },
+          updatedAt: "$$NOW",
+        },
+      },
+    ],
+    { upsert: true, session }
+  );
+};
+
 export const addTransaction = async (req, res) => {
   const session = await mongoose.startSession();
   try {
@@ -25,17 +55,10 @@ export const addTransaction = async (req, res) => {
       // Atomically increment the matching total so this can't be lost to a
       // race or interrupted mid-write (a stale read-modify-save previously
       // let one field's update silently disappear under concurrent requests).
-      const inc = {};
-      if (type === "credit") inc.totalCredit = numericAmount;
-      else if (type === "debit" || type === "withdrawal") inc.totalDebit = numericAmount;
+      const creditDelta = type === "credit" ? numericAmount : 0;
+      const debitDelta = type === "debit" || type === "withdrawal" ? numericAmount : 0;
 
-      if (Object.keys(inc).length) {
-        await UserData.findOneAndUpdate(
-          { userId },
-          { $inc: inc, $setOnInsert: { userId } },
-          { upsert: true, setDefaultsOnInsert: true, session }
-        );
-      }
+      await applyUserDataDelta(userId, { creditDelta, debitDelta }, session);
     });
 
     res.status(201).json(transaction);
@@ -68,7 +91,7 @@ export const updateTransaction = async (req, res) => {
         return;
       }
 
-      // Net delta: reverse the old contribution, apply the new one, in one atomic $inc.
+      // Net delta: reverse the old contribution, apply the new one, in one atomic update.
       const creditDelta =
         (type === "credit" ? numericAmount : 0) -
         (existingTransaction.type === "credit" ? existingTransaction.amount : 0);
@@ -78,13 +101,7 @@ export const updateTransaction = async (req, res) => {
           ? existingTransaction.amount
           : 0);
 
-      if (creditDelta || debitDelta) {
-        await UserData.findOneAndUpdate(
-          { userId },
-          { $inc: { totalCredit: creditDelta, totalDebit: debitDelta }, $set: { updatedAt: Date.now() } },
-          { upsert: true, setDefaultsOnInsert: true, session }
-        );
-      }
+      await applyUserDataDelta(userId, { creditDelta, debitDelta }, session);
 
       existingTransaction.type = type;
       existingTransaction.method = method;
@@ -126,17 +143,11 @@ export const deleteTransaction = async (req, res) => {
         return;
       }
 
-      const dec = {};
-      if (transaction.type === "credit") dec.totalCredit = -transaction.amount;
-      else if (transaction.type === "debit" || transaction.type === "withdrawal") dec.totalDebit = -transaction.amount;
+      const creditDelta = transaction.type === "credit" ? -transaction.amount : 0;
+      const debitDelta =
+        transaction.type === "debit" || transaction.type === "withdrawal" ? -transaction.amount : 0;
 
-      if (Object.keys(dec).length) {
-        await UserData.findOneAndUpdate(
-          { userId },
-          { $inc: dec, $set: { updatedAt: Date.now() } },
-          { session }
-        );
-      }
+      await applyUserDataDelta(userId, { creditDelta, debitDelta }, session);
     });
 
     if (notFound) {
