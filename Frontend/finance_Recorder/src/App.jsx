@@ -11,6 +11,9 @@ import AddTransaction from "./pages/AddTransaction";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import PreviousMonthsSummary from "./pages/PreviousMonthsSummary";
+import RecurringTransactions from "./pages/RecurringTransactions";
+import SavingsGoals from "./pages/SavingsGoals";
+import BillReminders from "./pages/BillReminders";
 
 function App() {
   return (
@@ -65,6 +68,30 @@ function App() {
           element={
             <ProtectedRoute>
               <PreviousMonthsSummary />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/recurring-transactions"
+          element={
+            <ProtectedRoute>
+              <RecurringTransactions />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/savings-goals"
+          element={
+            <ProtectedRoute>
+              <SavingsGoals />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/bill-reminders"
+          element={
+            <ProtectedRoute>
+              <BillReminders />
             </ProtectedRoute>
           }
         />

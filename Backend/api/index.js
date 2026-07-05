@@ -9,6 +9,10 @@ import userDataRoutes from "../Routes/userDataRoutes.js";
 import transactionRoutes from "../Routes/transactionRoutes.js";
 import cronRoutes from "../Routes/cronRoutes.js";
 import monthlySummaryRoutes from "../Routes/monthlySummaryRoutes.js";
+import categoryBudgetRoutes from "../Routes/categoryBudgetRoutes.js";
+import recurringTransactionRoutes from "../Routes/recurringTransactionRoutes.js";
+import savingsGoalRoutes from "../Routes/savingsGoalRoutes.js";
+import billReminderRoutes from "../Routes/billReminderRoutes.js";
 
 dotenv.config();
 
@@ -56,6 +60,10 @@ app.use("/api/userdata", userDataRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/cron", cronRoutes);
 app.use("/api/monthly-summary", monthlySummaryRoutes);
+app.use("/api/category-budgets", categoryBudgetRoutes);
+app.use("/api/recurring-transactions", recurringTransactionRoutes);
+app.use("/api/savings-goals", savingsGoalRoutes);
+app.use("/api/bill-reminders", billReminderRoutes);
 
 // 🚀 IMPORTANT: export app (NO listen)
 // export default app;

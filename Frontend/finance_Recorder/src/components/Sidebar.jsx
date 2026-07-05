@@ -9,6 +9,9 @@ import {
   Settings,
   History,
   LogOut,
+  Repeat,
+  PiggyBank,
+  BellRing,
   X // Import Close icon
 } from "lucide-react";
 
@@ -23,6 +26,9 @@ export default function Sidebar({ isOpen, onClose }) {
     { name: "Transactions", path: "/transactions", icon: <List size={20} /> },
     { name: "Add Transaction", path: "/add", icon: <PlusCircle size={20} /> },
     { name: "Monthly History", path: "/previous-months-summary", icon: <History size={20} /> },
+    { name: "Recurring", path: "/recurring-transactions", icon: <Repeat size={20} /> },
+    { name: "Savings Goals", path: "/savings-goals", icon: <PiggyBank size={20} /> },
+    { name: "Bill Reminders", path: "/bill-reminders", icon: <BellRing size={20} /> },
     { name: "Settings", path: "/settings", icon: <Settings size={20} /> },
   ];
 
