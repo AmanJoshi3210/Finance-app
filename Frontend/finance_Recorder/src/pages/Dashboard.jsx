@@ -4,17 +4,17 @@ import Navbar from "../components/Navbar";
 import axiosInstance from "../api/axiosInstance";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
-import { 
-  Loader2, 
-  Wallet, 
-  TrendingUp, 
-  TrendingDown, 
-  Target, 
+import SpendingTrendChart from "../components/charts/SpendingTrendChart";
+import CategoryBreakdownChart from "../components/charts/CategoryBreakdownChart";
+import {
+  Loader2,
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  Target,
   ArrowRight,
   Plus,
   MoreHorizontal,
-  Flame,
-  Sparkles,
   AlertTriangle
 } from "lucide-react";
 
@@ -26,48 +26,18 @@ export default function Dashboard() {
   
   const [userData, setUserData] = useState({ totalCredit: 0, totalDebit: 0, monthlyLimit: 0 });
   const [transactions, setTransactions] = useState([]);
+  const [monthlyTrend, setMonthlyTrend] = useState([]);
+  const [categoryTotals, setCategoryTotals] = useState({});
   const [isLoading, setIsLoading] = useState(true);
 
-  const getDailySpendingStreak = (items) => {
-    const debitDates = [...new Set(
-      items
-        .filter((item) => item.type !== "credit")
-        .map((item) => new Date(item.date).toDateString())
-    )].sort((a, b) => new Date(b) - new Date(a));
-
-    if (!debitDates.length) return 0;
-
-    let streak = 0;
-    let cursor = new Date();
-    cursor.setHours(0, 0, 0, 0);
-
-    for (const day of debitDates) {
-      const txDate = new Date(day);
-      txDate.setHours(0, 0, 0, 0);
-
-      const diff = Math.round((cursor - txDate) / (1000 * 60 * 60 * 24));
-      if (diff === streak) {
-        streak += 1;
-      } else if (diff > streak) {
-        break;
-      }
-    }
-
-    return streak;
-  };
-
-  const getTopExpenseCategory = (items) => {
-    const categoryTotals = items
+  const getCategoryTotals = (items) =>
+    items
       .filter((item) => item.type !== "credit")
       .reduce((acc, item) => {
         const key = item.category || "Other";
         acc[key] = (acc[key] || 0) + Number(item.amount || 0);
         return acc;
       }, {});
-
-    const ranked = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
-    return ranked[0] || ["None yet", 0];
-  };
 
   useEffect(() => {
     if (authLoading || !user) return; 
@@ -76,14 +46,20 @@ export default function Dashboard() {
       try {
         // Dashboard only needs the aggregate totals (from the UserData
         // summary collection) plus a small preview of recent activity —
-        // never the full transaction history.
-        const [userRes, txRes] = await Promise.all([
+        // never the full transaction history. The trend/category charts
+        // pull their own slices (a monthly aggregation, and a wider-but-still-
+        // capped page for category totals) alongside that.
+        const [userRes, txRes, trendRes, categoryRes] = await Promise.all([
           axiosInstance.get("/api/userdata"),
           axiosInstance.get("/api/transactions/recent", { params: { limit: 5 } }),
+          axiosInstance.get("/api/transactions/monthly-trend"),
+          axiosInstance.get("/api/transactions", { params: { page: 1, limit: 100 } }),
         ]);
 
         setUserData(userRes.data);
         setTransactions(txRes.data);
+        setMonthlyTrend(trendRes.data);
+        setCategoryTotals(getCategoryTotals(categoryRes.data.transactions || []));
 
       } catch (err) {
         console.error("Dashboard fetch error:", err.response || err.message);
@@ -112,14 +88,9 @@ export default function Dashboard() {
     ? Math.min(((userData.totalDebit || 0) / userData.monthlyLimit) * 100, 100)
     : 0;
 
-  const [topCategory, topCategorySpend] = getTopExpenseCategory(transactions);
-  const spendingStreak = getDailySpendingStreak(transactions);
   // Only tease a couple of entries here — the Transactions page (with
   // pagination) is the place to browse full history.
   const recentTransactionsPreview = transactions.slice(0, 2);
-  const savingsRate = userData.totalCredit > 0
-    ? Math.max((((userData.totalCredit - userData.totalDebit) / userData.totalCredit) * 100), 0)
-    : 0;
   const monthlyTarget = userData.monthlyLimit > 0 ? userData.monthlyLimit : (userData.totalDebit || 0);
   const projectedSpend = monthlyTarget > 0 ? (userData.totalDebit || 0) * 1.15 : 0;
   const isOverspendingRisk = projectedSpend > monthlyTarget && monthlyTarget > 0;
@@ -280,31 +251,12 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
-            <div className="bg-gradient-to-br from-indigo-600 to-blue-600 text-white rounded-2xl p-6 shadow-lg shadow-indigo-500/20">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold">Finance Personality</h3>
-                <Sparkles size={18} />
-              </div>
-              <p className="text-2xl font-bold">
-                {savingsRate > 35 ? "Wealth Builder" : savingsRate > 15 ? "Balanced Planner" : "Growth Starter"}
-              </p>
-              <p className="text-sm text-indigo-100 mt-2">
-                You are saving {savingsRate.toFixed(1)}% of your income. Keep this pace to improve long-term stability.
-              </p>
-            </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+            <SpendingTrendChart data={monthlyTrend} formatCurrency={formatCurrency} />
+            <CategoryBreakdownChart categoryTotals={categoryTotals} formatCurrency={formatCurrency} />
+          </div>
 
-            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-slate-800">Top Spend Zone</h3>
-                <Flame size={18} className="text-orange-500" />
-              </div>
-              <p className="text-2xl font-bold text-slate-800">{topCategory}</p>
-              <p className="text-sm text-slate-500 mt-2">
-                {formatCurrency(topCategorySpend)} spent in this category. Spending streak: <strong>{spendingStreak} day(s)</strong>.
-              </p>
-            </div>
-
+          <div className="grid grid-cols-1 gap-6 mt-6">
             <div className={`rounded-2xl p-6 shadow-sm border ${isOverspendingRisk ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"}`}>
               <div className="flex items-center justify-between mb-3">
                 <h3 className={`font-semibold ${isOverspendingRisk ? "text-red-700" : "text-emerald-700"}`}>Budget Forecast</h3>

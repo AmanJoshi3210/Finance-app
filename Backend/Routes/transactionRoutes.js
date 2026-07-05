@@ -6,6 +6,7 @@ import {
   deleteTransaction,
   getUserTransactions,
   getRecentTransactions,
+  getMonthlyTrend,
   addOrUpdateMonthlyLimit,
   getMonthlyLimit,
 } from "../controllers/transactionController.js";
@@ -15,6 +16,7 @@ const router = express.Router();
 router.post("/", authMiddleware, addTransaction);                       // Add new transaction
 router.get("/", authMiddleware, getUserTransactions);                   // Get a paginated page of transactions
 router.get("/recent", authMiddleware, getRecentTransactions);           // Get last N transactions (dashboard preview)
+router.get("/monthly-trend", authMiddleware, getMonthlyTrend);          // Get credit/debit totals grouped by month
 router.get("/monthly-limit", authMiddleware, getMonthlyLimit);          // Get monthly limit
 router.put("/monthly-limit", authMiddleware, addOrUpdateMonthlyLimit);  // Update monthly limit
 

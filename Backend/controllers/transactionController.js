@@ -218,6 +218,45 @@ export const getRecentTransactions = async (req, res) => {
   }
 };
 
+// 📈 Get credit/debit totals grouped by month, for the spending trend chart
+export const getMonthlyTrend = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
+    const trend = await Transaction.aggregate([
+      { $match: { userId: userObjectId } },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m", date: "$date" } },
+          credit: {
+            $sum: { $cond: [{ $eq: ["$type", "credit"] }, "$amount", 0] },
+          },
+          debit: {
+            $sum: {
+              $cond: [{ $in: ["$type", ["debit", "withdrawal"]] }, "$amount", 0],
+            },
+          },
+        },
+      },
+      { $sort: { _id: 1 } },
+      {
+        $project: {
+          _id: 0,
+          month: "$_id",
+          credit: 1,
+          debit: 1,
+        },
+      },
+    ]);
+
+    res.json(trend);
+  } catch (error) {
+    console.error("Error fetching monthly trend:", error);
+    res.status(500).json({ message: "Server error fetching monthly trend" });
+  }
+};
+
 export const addOrUpdateMonthlyLimit = async (req, res) => {
   try {
     const { monthlyLimit } = req.body;
