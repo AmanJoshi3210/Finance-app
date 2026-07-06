@@ -1,6 +1,7 @@
 import express from "express";
 import { runMonthlySnapshot } from "../controllers/monthlySnapshotController.js";
 import { runDueRecurringTransactions } from "../controllers/recurringTransactionController.js";
+import { runBillReminderChecks } from "../controllers/billReminderController.js";
 
 const router = express.Router();
 
@@ -34,6 +35,22 @@ router.get("/run-recurring", async (req, res) => {
     res.json({ message: "Recurring transactions run complete", count });
   } catch (error) {
     console.error("Run Recurring Transactions Cron Error:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.get("/bill-reminders", async (req, res) => {
+  try {
+    const secret = req.headers["x-cron-secret"];
+
+    if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const count = await runBillReminderChecks();
+    res.json({ message: "Bill reminder check complete", count });
+  } catch (error) {
+    console.error("Bill Reminder Cron Error:", error);
     res.status(500).json({ message: error.message });
   }
 });

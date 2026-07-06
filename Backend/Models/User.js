@@ -20,6 +20,11 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  notificationPreferences: {
+    budgetAlerts: { type: Boolean, default: true },
+    weeklySummary: { type: Boolean, default: true },
+    unusualActivity: { type: Boolean, default: false },
+  },
 });
 
 export default mongoose.model("User", userSchema);
