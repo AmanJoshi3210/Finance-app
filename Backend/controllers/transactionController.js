@@ -1,18 +1,21 @@
 import mongoose from "mongoose";
 import Transaction from "../Models/Transactions.js";
 import UserData from "../Models/UserData.js";
-// import User from "../Models/User.js"; // if you need to verify user existence
+import User from "../Models/User.js";
+import { checkOverallBudget, checkCategoryBudget, checkUnusualActivity } from "../services/notificationService.js";
 
 // Applies a delta to UserData's running totals inside the caller's
 // transaction, clamping each total at 0 with an aggregation-pipeline update
 // so a delete/edit reversal can never drive it negative (e.g. totals drifted
 // out of sync with the ledger, or two edits race on the same transaction).
+// Returns the updated document so callers can react to the new totals (e.g.
+// budget-threshold notifications) without a second round-trip.
 const applyUserDataDelta = async (userId, { creditDelta = 0, debitDelta = 0 }, session) => {
-  if (!creditDelta && !debitDelta) return;
+  if (!creditDelta && !debitDelta) return UserData.findOne({ userId }).session(session);
 
   const userObjectId = new mongoose.Types.ObjectId(userId);
 
-  await UserData.findOneAndUpdate(
+  return UserData.findOneAndUpdate(
     { userId: userObjectId },
     [
       {
@@ -29,8 +32,26 @@ const applyUserDataDelta = async (userId, { creditDelta = 0, debitDelta = 0 }, s
         },
       },
     ],
-    { upsert: true, session }
+    { upsert: true, new: true, session }
   );
+};
+
+// Runs the real-time notification checks (overall/category budget thresholds,
+// unusual-activity heuristic) for a debit/withdrawal, gated by the user's
+// notification preferences. Shared by add and update so both paths behave
+// identically.
+const runNotificationChecks = async ({ userId, category, date, transaction, newDebit, monthlyLimit, session }) => {
+  const user = await User.findById(userId).select("notificationPreferences").session(session);
+  const prefs = user?.notificationPreferences || {};
+
+  if (prefs.budgetAlerts !== false) {
+    await checkOverallBudget({ userId, newDebit, monthlyLimit, date, session });
+    await checkCategoryBudget({ userId, category, date, session });
+  }
+
+  if (prefs.unusualActivity) {
+    await checkUnusualActivity({ userId, transaction, session });
+  }
 };
 
 // Shared by the HTTP add-transaction handler and the recurring-transaction
@@ -47,7 +68,19 @@ export const createTransactionRecord = async (userId, { type, method, category, 
   const creditDelta = type === "credit" ? numericAmount : 0;
   const debitDelta = type === "debit" || type === "withdrawal" ? numericAmount : 0;
 
-  await applyUserDataDelta(userId, { creditDelta, debitDelta }, session);
+  const userData = await applyUserDataDelta(userId, { creditDelta, debitDelta }, session);
+
+  if (debitDelta > 0) {
+    await runNotificationChecks({
+      userId,
+      category,
+      date: transaction.date,
+      transaction,
+      newDebit: userData.totalDebit,
+      monthlyLimit: userData.monthlyLimit,
+      session,
+    });
+  }
 
   return transaction;
 };
@@ -110,7 +143,7 @@ export const updateTransaction = async (req, res) => {
           ? existingTransaction.amount
           : 0);
 
-      await applyUserDataDelta(userId, { creditDelta, debitDelta }, session);
+      const userData = await applyUserDataDelta(userId, { creditDelta, debitDelta }, session);
 
       existingTransaction.type = type;
       existingTransaction.method = method;
@@ -118,6 +151,18 @@ export const updateTransaction = async (req, res) => {
       existingTransaction.amount = numericAmount;
       existingTransaction.description = description;
       await existingTransaction.save({ session });
+
+      if (type === "debit" || type === "withdrawal") {
+        await runNotificationChecks({
+          userId,
+          category,
+          date: existingTransaction.date,
+          transaction: existingTransaction,
+          newDebit: userData.totalDebit,
+          monthlyLimit: userData.monthlyLimit,
+          session,
+        });
+      }
 
       transaction = existingTransaction;
     });

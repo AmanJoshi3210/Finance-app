@@ -1,4 +1,5 @@
 import BillReminder from "../Models/BillReminder.js";
+import { createNotificationOnce } from "../services/notificationService.js";
 
 // Rolls a recurring reminder's dueDate forward by whole months until it's in
 // the future — same lazy self-healing convention as the monthly summary job,
@@ -116,6 +117,37 @@ export const updateBillReminder = async (req, res) => {
     console.error("Update Bill Reminder Error:", error);
     res.status(500).json({ message: error.message });
   }
+};
+
+// Called from the cron route. Rolls recurring reminders forward the same way
+// getBillReminders does, then notifies users about any reminder due within
+// its notifyDaysBefore window — deduped per (reminder, dueDate) so a
+// recurring bill gets a fresh notification each cycle instead of a repeat.
+export const runBillReminderChecks = async () => {
+  const now = new Date();
+  const reminders = await BillReminder.find({});
+  let notifiedCount = 0;
+
+  for (const reminder of reminders) {
+    if (rollForwardIfPast(reminder, now)) {
+      await reminder.save();
+    }
+
+    const daysUntilDue = (new Date(reminder.dueDate) - now) / (1000 * 60 * 60 * 24);
+    if (daysUntilDue < 0 || daysUntilDue > reminder.notifyDaysBefore) continue;
+
+    const dueDateKey = new Date(reminder.dueDate).toISOString().slice(0, 10);
+    const created = await createNotificationOnce({
+      userId: reminder.userId,
+      type: "bill_reminder",
+      message: `"${reminder.name}" (₹${reminder.amount}) is due on ${dueDateKey}.`,
+      dedupeKey: `bill:${reminder._id}:${dueDateKey}`,
+    });
+
+    if (created) notifiedCount++;
+  }
+
+  return notifiedCount;
 };
 
 // 🗑️ Delete a bill reminder

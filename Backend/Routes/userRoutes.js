@@ -23,6 +23,47 @@ router.get("/verify", authMiddleware, async (req, res) => {
 });
 
 
+const DEFAULT_NOTIFICATION_PREFERENCES = {
+  budgetAlerts: true,
+  weeklySummary: true,
+  unusualActivity: false,
+};
+
+router.get("/notification-preferences", authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).select("notificationPreferences");
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json(user.notificationPreferences || DEFAULT_NOTIFICATION_PREFERENCES);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.put("/notification-preferences", authMiddleware, async (req, res) => {
+  try {
+    const { budgetAlerts, weeklySummary, unusualActivity } = req.body;
+
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      {
+        $set: {
+          "notificationPreferences.budgetAlerts": Boolean(budgetAlerts),
+          "notificationPreferences.weeklySummary": Boolean(weeklySummary),
+          "notificationPreferences.unusualActivity": Boolean(unusualActivity),
+        },
+      },
+      { new: true, select: "notificationPreferences" }
+    );
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json(user.notificationPreferences);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // REGISTER
 router.post("/register", async (req, res) => {
   try {

@@ -63,10 +63,11 @@ export default function Settings() {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const [budgetRes, categoriesRes, categoryBudgetsRes, localSettings] = await Promise.all([
+        const [budgetRes, categoriesRes, categoryBudgetsRes, notificationPrefsRes, localSettings] = await Promise.all([
           axiosInstance.get("/api/transactions/monthly-limit"),
           axiosInstance.get("/api/transactions/categories"),
           axiosInstance.get("/api/category-budgets", { params: { month: currentMonthString() } }),
+          axiosInstance.get("/api/users/notification-preferences"),
           Promise.resolve(localStorage.getItem(SETTINGS_KEY)),
         ]);
 
@@ -81,11 +82,11 @@ export default function Settings() {
           limits[budget.category] = { value: budget.limit, budgetId: budget._id, saving: false };
         }
         setCategoryLimits(limits);
+        setNotifications(notificationPrefsRes.data);
 
         if (localSettings) {
           const parsed = JSON.parse(localSettings);
           if (parsed.profile) setProfile(parsed.profile);
-          if (parsed.notifications) setNotifications(parsed.notifications);
           if (parsed.security) setSecurity(parsed.security);
         }
       } catch (error) {
@@ -186,13 +187,23 @@ export default function Settings() {
       return;
     }
 
-    persistLocalSettings({ profile, notifications, security });
+    persistLocalSettings({ profile, security });
     showToast("Profile preferences saved.");
   };
 
-  const handleSaveNotifications = () => {
-    persistLocalSettings({ profile, notifications, security });
-    showToast("Notification preferences saved.");
+  const handleSaveNotifications = async () => {
+    setSaving(true);
+    try {
+      const res = await axiosInstance.put("/api/users/notification-preferences", notifications);
+      setNotifications(res.data);
+      showToast("Notification preferences saved.");
+    } catch (error) {
+      if (error.response?.status === 401) navigate("/login");
+      console.error("Error saving notification preferences:", error);
+      showToast("Could not save notification preferences. Please try again.", "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSaveSecurity = () => {
@@ -206,7 +217,7 @@ export default function Settings() {
     };
 
     setSecurity(updatedSecurity);
-    persistLocalSettings({ profile, notifications, security: updatedSecurity });
+    persistLocalSettings({ profile, security: updatedSecurity });
     showToast("Security preferences updated.");
   };
 
@@ -507,9 +518,11 @@ export default function Settings() {
                     <div className="pt-4 flex justify-end">
                       <button
                         onClick={handleSaveNotifications}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl"
+                        disabled={saving}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl disabled:opacity-70 disabled:cursor-not-allowed"
                       >
-                        <Save size={16} /> Save Notification Settings
+                        {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                        Save Notification Settings
                       </button>
                     </div>
                   </div>
