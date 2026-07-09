@@ -12,6 +12,7 @@ import {
   Repeat,
   PiggyBank,
   BellRing,
+  Upload,
   X // Import Close icon
 } from "lucide-react";
 
@@ -25,6 +26,7 @@ export default function Sidebar({ isOpen, onClose }) {
     { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
     { name: "Transactions", path: "/transactions", icon: <List size={20} /> },
     { name: "Add Transaction", path: "/add", icon: <PlusCircle size={20} /> },
+    { name: "Import CSV", path: "/import", icon: <Upload size={20} /> },
     { name: "Monthly History", path: "/previous-months-summary", icon: <History size={20} /> },
     { name: "Recurring", path: "/recurring-transactions", icon: <Repeat size={20} /> },
     { name: "Savings Goals", path: "/savings-goals", icon: <PiggyBank size={20} /> },
@@ -43,17 +45,17 @@ export default function Sidebar({ isOpen, onClose }) {
       />
 
       {/* ✅ Sidebar Container */}
-      <div className={`fixed top-0 left-0 h-full w-64 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out border-r border-slate-200 
+      <div className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-slate-900 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out border-r border-slate-200 dark:border-slate-800
         ${isOpen ? "translate-x-0" : "-translate-x-full"} md:translate-x-0 md:shadow-none`}>
-        
+
         <div className="flex flex-col h-full justify-between">
           <div>
-            <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100">
-              <h1 className="text-2xl font-bold text-blue-600 tracking-tight">
+            <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100 dark:border-slate-800">
+              <h1 className="text-2xl font-bold text-blue-600 dark:text-blue-400 tracking-tight">
                 FinTrack
               </h1>
               {/* ✅ Close Button (Mobile Only) */}
-              <button onClick={onClose} className="md:hidden text-slate-400 hover:text-slate-600">
+              <button onClick={onClose} className="md:hidden text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
                 <X size={24} />
               </button>
             </div>
@@ -65,9 +67,9 @@ export default function Sidebar({ isOpen, onClose }) {
                   to={link.path}
                   onClick={onClose} // Close sidebar when link is clicked on mobile
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    location.pathname === link.path 
-                      ? "bg-blue-50 text-blue-700" 
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    location.pathname === link.path
+                      ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"
                   }`}
                 >
                   {link.icon}
@@ -77,15 +79,15 @@ export default function Sidebar({ isOpen, onClose }) {
             </nav>
           </div>
 
-          <div className="p-4 border-t border-gray-100">
+          <div className="p-4 border-t border-gray-100 dark:border-slate-800">
             <button
               onClick={logout}
-              className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-lg transition-colors"
             >
               <LogOut size={20} />
               Logout
             </button>
-            <div className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-blue-600 hover:bg-red-50 rounded-lg transition-colors"> By Aman Joshi</div>
+            <div className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-red-50 dark:hover:bg-slate-800 rounded-lg transition-colors"> By Aman Joshi</div>
           </div>
         </div>
       </div>

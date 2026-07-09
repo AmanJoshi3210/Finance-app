@@ -223,14 +223,14 @@ export default function Settings() {
 
   if (loading)
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-slate-50">
-        <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-        <p className="text-slate-500 font-medium">Loading settings...</p>
+      <div className="flex flex-col items-center justify-center h-screen bg-slate-50 dark:bg-slate-950">
+        <Loader2 className="w-10 h-10 text-blue-600 dark:text-blue-400 animate-spin mb-4" />
+        <p className="text-slate-500 dark:text-slate-400 font-medium">Loading settings...</p>
       </div>
     );
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 relative">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 relative">
       {/* ✅ Sidebar with State Props */}
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
@@ -241,8 +241,8 @@ export default function Settings() {
 
         <div className="max-w-4xl mx-auto p-6 md:p-8">
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-slate-800">Preferences</h2>
-            <p className="text-slate-500 mt-1">Manage your budget limits and account settings.</p>
+            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Preferences</h2>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">Manage your budget limits and account settings.</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -251,8 +251,8 @@ export default function Settings() {
                 onClick={() => setActiveSection("budget")}
                 className={`w-full flex items-center gap-3 px-4 py-3 font-medium rounded-xl transition-colors ${
                   activeSection === "budget"
-                    ? "bg-white text-blue-600 shadow-sm border border-blue-100 ring-2 ring-blue-50"
-                    : "text-slate-600 hover:bg-white hover:text-slate-900"
+                    ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-blue-100 dark:border-blue-900 ring-2 ring-blue-50 dark:ring-blue-950"
+                    : "text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                 }`}
               >
                 <Target size={18} />
@@ -263,8 +263,8 @@ export default function Settings() {
                 onClick={() => setActiveSection("profile")}
                 className={`w-full flex items-center gap-3 px-4 py-3 font-medium rounded-xl transition-colors ${
                   activeSection === "profile"
-                    ? "bg-white text-blue-600 shadow-sm border border-blue-100 ring-2 ring-blue-50"
-                    : "text-slate-600 hover:bg-white hover:text-slate-900"
+                    ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-blue-100 dark:border-blue-900 ring-2 ring-blue-50 dark:ring-blue-950"
+                    : "text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                 }`}
               >
                 <User size={18} />
@@ -275,8 +275,8 @@ export default function Settings() {
                 onClick={() => setActiveSection("notifications")}
                 className={`w-full flex items-center gap-3 px-4 py-3 font-medium rounded-xl transition-colors ${
                   activeSection === "notifications"
-                    ? "bg-white text-blue-600 shadow-sm border border-blue-100 ring-2 ring-blue-50"
-                    : "text-slate-600 hover:bg-white hover:text-slate-900"
+                    ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-blue-100 dark:border-blue-900 ring-2 ring-blue-50 dark:ring-blue-950"
+                    : "text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                 }`}
               >
                 <Bell size={18} />
@@ -287,8 +287,8 @@ export default function Settings() {
                 onClick={() => setActiveSection("security")}
                 className={`w-full flex items-center gap-3 px-4 py-3 font-medium rounded-xl transition-colors ${
                   activeSection === "security"
-                    ? "bg-white text-blue-600 shadow-sm border border-blue-100 ring-2 ring-blue-50"
-                    : "text-slate-600 hover:bg-white hover:text-slate-900"
+                    ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-blue-100 dark:border-blue-900 ring-2 ring-blue-50 dark:ring-blue-950"
+                    : "text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                 }`}
               >
                 <Shield size={18} />
@@ -299,16 +299,16 @@ export default function Settings() {
             <div className="lg:col-span-2">
               {activeSection === "budget" && (
                 <div className="space-y-6">
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                  <div className="p-6 border-b border-slate-100">
-                    <h3 className="text-lg font-bold text-slate-800">Monthly Budget</h3>
-                    <p className="text-sm text-slate-500 mt-1">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Monthly Budget</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                       Set a maximum spending limit to track your financial health.
                     </p>
                   </div>
 
                   <div className="p-6 md:p-8">
-                    <label className="block text-sm font-medium text-slate-700 mb-2">Monthly Limit Amount</label>
+                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">Monthly Limit Amount</label>
 
                     <div className="relative max-w-md">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -316,21 +316,21 @@ export default function Settings() {
                       </div>
                       <input
                         type="number"
-                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all font-medium text-slate-900"
+                        className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all font-medium text-slate-900 dark:text-slate-100"
                         value={monthlyLimit}
                         onChange={(e) => setMonthlyLimit(e.target.value)}
                         placeholder="e.g. 20000"
                       />
                     </div>
 
-                    <div className="mt-4 flex items-start gap-3 p-4 bg-blue-50 text-blue-700 rounded-xl text-sm">
+                    <div className="mt-4 flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 rounded-xl text-sm">
                       <CreditCard size={20} className="shrink-0 mt-0.5" />
                       <p>
                         We'll calculate your progress based on your debit transactions against this limit on your dashboard.
                       </p>
                     </div>
 
-                    <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end">
+                    <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end">
                       <button
                         onClick={handleSaveBudget}
                         disabled={saving}
@@ -352,17 +352,17 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                  <div className="p-6 border-b border-slate-100">
-                    <h3 className="text-lg font-bold text-slate-800">Category Limits</h3>
-                    <p className="text-sm text-slate-500 mt-1">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Category Limits</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                       Set a spending cap per category for this month ({currentMonthString()}).
                     </p>
                   </div>
 
                   <div className="p-6 md:p-8">
                     {categories.length === 0 ? (
-                      <p className="text-sm text-slate-500">
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
                         Add some transactions with categories first, then come back here to set limits.
                       </p>
                     ) : (
@@ -372,11 +372,11 @@ export default function Settings() {
                           return (
                             <div
                               key={category}
-                              className="flex items-center gap-3 p-3 border border-slate-200 rounded-xl bg-slate-50"
+                              className="flex items-center gap-3 p-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800"
                             >
                               <div className="flex items-center gap-2 w-40 shrink-0">
                                 <Tag size={16} className="text-slate-400" />
-                                <span className="font-medium text-slate-700 truncate">{category}</span>
+                                <span className="font-medium text-slate-700 dark:text-slate-200 truncate">{category}</span>
                               </div>
 
                               <div className="relative flex-1 max-w-xs">
@@ -388,7 +388,7 @@ export default function Settings() {
                                   value={row.value}
                                   onChange={(e) => handleCategoryLimitChange(category, e.target.value)}
                                   placeholder="No limit set"
-                                  className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm font-medium text-slate-900"
+                                  className="w-full pl-9 pr-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm font-medium text-slate-900 dark:text-slate-100"
                                 />
                               </div>
 
@@ -405,7 +405,7 @@ export default function Settings() {
                                 <button
                                   onClick={() => handleDeleteCategoryLimit(category)}
                                   disabled={row.saving}
-                                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                  className="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors disabled:opacity-50"
                                   aria-label={`Remove limit for ${category}`}
                                 >
                                   <Trash2 size={16} />
@@ -422,26 +422,26 @@ export default function Settings() {
               )}
 
               {activeSection === "profile" && (
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                  <div className="p-6 border-b border-slate-100">
-                    <h3 className="text-lg font-bold text-slate-800">Profile</h3>
-                    <p className="text-sm text-slate-500 mt-1">Keep your account identity details up to date.</p>
+                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Profile</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Keep your account identity details up to date.</p>
                   </div>
 
                   <div className="p-6 md:p-8 space-y-4">
                     <div>
-                      <label className="text-sm font-medium text-slate-700">Full Name</label>
+                      <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Full Name</label>
                       <input
                         type="text"
                         value={profile.fullName}
                         onChange={(e) => setProfile((prev) => ({ ...prev, fullName: e.target.value }))}
                         placeholder="Enter your full name"
-                        className="mt-2 w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="mt-2 w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="text-sm font-medium text-slate-700">Email Address</label>
+                      <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Email Address</label>
                       <div className="mt-2 relative">
                         <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
@@ -449,13 +449,13 @@ export default function Settings() {
                           value={profile.email}
                           onChange={(e) => setProfile((prev) => ({ ...prev, email: e.target.value }))}
                           placeholder="name@example.com"
-                          className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                          className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="text-sm font-medium text-slate-700">Phone</label>
+                      <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Phone</label>
                       <div className="mt-2 relative">
                         <Smartphone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
@@ -463,7 +463,7 @@ export default function Settings() {
                           value={profile.phone}
                           onChange={(e) => setProfile((prev) => ({ ...prev, phone: e.target.value }))}
                           placeholder="+91 98xxxxxx"
-                          className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                          className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                         />
                       </div>
                     </div>
@@ -481,10 +481,10 @@ export default function Settings() {
               )}
 
               {activeSection === "notifications" && (
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                  <div className="p-6 border-b border-slate-100">
-                    <h3 className="text-lg font-bold text-slate-800">Notifications</h3>
-                    <p className="text-sm text-slate-500 mt-1">Choose when and how we should notify you.</p>
+                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Notifications</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Choose when and how we should notify you.</p>
                   </div>
 
                   <div className="p-6 md:p-8 space-y-4">
@@ -530,10 +530,10 @@ export default function Settings() {
               )}
 
               {activeSection === "security" && (
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                  <div className="p-6 border-b border-slate-100">
-                    <h3 className="text-lg font-bold text-slate-800">Security</h3>
-                    <p className="text-sm text-slate-500 mt-1">Strengthen account protection and session controls.</p>
+                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                  <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Security</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Strengthen account protection and session controls.</p>
                   </div>
 
                   <div className="p-6 md:p-8 space-y-5">
@@ -544,17 +544,17 @@ export default function Settings() {
                       onToggle={() =>
                         setSecurity((prev) => ({ ...prev, twoFactorEnabled: !prev.twoFactorEnabled }))
                       }
-                      icon={<Lock size={16} className="text-slate-500" />}
+                      icon={<Lock size={16} className="text-slate-500 dark:text-slate-400" />}
                     />
 
                     <div>
-                      <label className="text-sm font-medium text-slate-700">Session timeout</label>
+                      <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Session timeout</label>
                       <select
                         value={security.sessionTimeout}
                         onChange={(e) =>
                           setSecurity((prev) => ({ ...prev, sessionTimeout: e.target.value }))
                         }
-                        className="mt-2 w-full max-w-xs px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="mt-2 w-full max-w-xs px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                       >
                         <option value="15">15 minutes</option>
                         <option value="30">30 minutes</option>
@@ -562,8 +562,8 @@ export default function Settings() {
                       </select>
                     </div>
 
-                    <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200 text-sm text-slate-600">
-                      <Eye size={18} className="mt-0.5 text-slate-500" />
+                    <div className="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300">
+                      <Eye size={18} className="mt-0.5 text-slate-500 dark:text-slate-400" />
                       <p>
                         Last password update: <span className="font-semibold">{security.lastPasswordChange}</span>
                       </p>
@@ -606,22 +606,22 @@ export default function Settings() {
 
 function SwitchRow({ label, description, checked, onToggle, icon }) {
   return (
-    <div className="flex items-center justify-between gap-4 p-4 border border-slate-200 rounded-xl bg-slate-50">
+    <div className="flex items-center justify-between gap-4 p-4 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800">
       <div className="flex items-start gap-2">
         {icon}
         <div>
-          <h4 className="font-medium text-slate-800">{label}</h4>
-          <p className="text-sm text-slate-500 mt-1">{description}</p>
+          <h4 className="font-medium text-slate-800 dark:text-slate-100">{label}</h4>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{description}</p>
         </div>
       </div>
 
       <button
         type="button"
         onClick={onToggle}
-        className={`relative w-12 h-6 rounded-full transition-colors ${checked ? "bg-blue-600" : "bg-slate-300"}`}
+        className={`relative w-12 h-6 rounded-full transition-colors ${checked ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-600"}`}
       >
         <span
-          className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${
+          className={`absolute top-0.5 w-5 h-5 bg-white dark:bg-slate-900 rounded-full shadow transition-transform ${
             checked ? "translate-x-6" : "translate-x-0.5"
           }`}
         />

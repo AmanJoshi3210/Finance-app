@@ -9,9 +9,9 @@ import { useNavigate } from "react-router-dom";
 import { Loader2, BellRing, Calendar, Repeat, Pencil, Trash2, Plus } from "lucide-react";
 
 const STATUS_STYLES = {
-  overdue: "bg-red-100 text-red-700",
-  "due-soon": "bg-amber-100 text-amber-700",
-  upcoming: "bg-slate-100 text-slate-600",
+  overdue: "bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300",
+  "due-soon": "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300",
+  upcoming: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300",
 };
 
 const STATUS_LABELS = {
@@ -91,7 +91,7 @@ export default function BillReminders() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 relative">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 relative">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
       <div className="flex-1 md:ml-64 transition-all duration-300">
@@ -100,8 +100,8 @@ export default function BillReminders() {
         <div className="max-w-5xl mx-auto p-6 md:p-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-slate-800">Bill Reminders</h1>
-              <p className="text-slate-500 text-sm mt-1">Stay ahead of upcoming and overdue bills.</p>
+              <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Bill Reminders</h1>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Stay ahead of upcoming and overdue bills.</p>
             </div>
 
             <button
@@ -118,37 +118,37 @@ export default function BillReminders() {
 
           {loading && (
             <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-              <p className="text-slate-500 font-medium">Loading bill reminders...</p>
+              <Loader2 className="w-10 h-10 text-blue-600 dark:text-blue-400 animate-spin mb-4" />
+              <p className="text-slate-500 dark:text-slate-400 font-medium">Loading bill reminders...</p>
             </div>
           )}
 
           {!loading && reminders.length === 0 && (
-            <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 shadow-sm">
-              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-12 text-center border border-slate-200 dark:border-slate-700 shadow-sm">
+              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
                 <BellRing className="w-8 h-8 text-slate-400" />
               </div>
-              <h3 className="text-lg font-semibold text-slate-700">No bill reminders yet</h3>
-              <p className="text-slate-500 mt-2">Add a reminder so you never miss a due date.</p>
+              <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">No bill reminders yet</h3>
+              <p className="text-slate-500 dark:text-slate-400 mt-2">Add a reminder so you never miss a due date.</p>
             </div>
           )}
 
           {!loading && reminders.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="divide-y divide-slate-100">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
                 {reminders.map((reminder) => (
                   <div
                     key={reminder._id}
-                    className="group p-5 hover:bg-slate-50 transition-colors duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                    className="group p-5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                   >
                     <div className="flex items-start gap-4">
-                      <div className="p-3 rounded-full shrink-0 bg-blue-100 text-blue-600">
+                      <div className="p-3 rounded-full shrink-0 bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400">
                         <BellRing size={20} />
                       </div>
 
                       <div>
-                        <h4 className="font-semibold text-slate-800 text-base">{reminder.name}</h4>
-                        <div className="flex items-center gap-2 text-sm text-slate-500 mt-1 flex-wrap">
+                        <h4 className="font-semibold text-slate-800 dark:text-slate-100 text-base">{reminder.name}</h4>
+                        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 mt-1 flex-wrap">
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_STYLES[reminder.status]}`}>
                             {STATUS_LABELS[reminder.status]}
                           </span>
@@ -156,7 +156,7 @@ export default function BillReminders() {
                             <Calendar size={12} /> {formatDate(reminder.dueDate)}
                           </span>
                           {reminder.recurring && (
-                            <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-slate-100 border border-slate-200">
+                            <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
                               <Repeat size={11} /> Monthly
                             </span>
                           )}
@@ -165,7 +165,7 @@ export default function BillReminders() {
                     </div>
 
                     <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                      <span className="text-lg font-bold tracking-tight text-slate-800">{formatCurrency(reminder.amount)}</span>
+                      <span className="text-lg font-bold tracking-tight text-slate-800 dark:text-slate-100">{formatCurrency(reminder.amount)}</span>
 
                       <div className="flex items-center gap-1">
                         <button
@@ -174,7 +174,7 @@ export default function BillReminders() {
                             setEditingReminder(reminder);
                             setShowForm(true);
                           }}
-                          className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg transition-colors"
                           aria-label="Edit reminder"
                         >
                           <Pencil size={16} />
@@ -183,7 +183,7 @@ export default function BillReminders() {
                           type="button"
                           onClick={() => handleDelete(reminder._id)}
                           disabled={deletingId === reminder._id}
-                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                          className="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors disabled:opacity-50"
                           aria-label="Delete reminder"
                         >
                           {deletingId === reminder._id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}

@@ -102,15 +102,15 @@ export default function Dashboard() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-slate-50">
+      <div className="flex flex-col items-center justify-center h-screen bg-slate-50 dark:bg-slate-950">
         <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-        <p className="text-slate-500 font-medium">Loading your financial overview...</p>
+        <p className="text-slate-500 dark:text-slate-400 font-medium">Loading your financial overview...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 relative">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 relative">
       
       {/* ✅ Sidebar with State Props */}
       <Sidebar 
@@ -132,10 +132,10 @@ export default function Dashboard() {
           {/* Header Section */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
-              <h2 className="text-2xl font-bold text-slate-800">
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
                 Hello, {user?.name?.split(" ")[0] || "User"} 👋
               </h2>
-              <p className="text-slate-500 mt-1">Here's what's happening with your wallet today.</p>
+              <p className="text-slate-500 dark:text-slate-400 mt-1">Here's what's happening with your wallet today.</p>
             </div>
             <Link 
               to="/add" 
@@ -165,7 +165,7 @@ export default function Dashboard() {
               icon={<TrendingUp size={22} className="text-white" />}
               iconBg="bg-emerald-500"
               subtext="Credits this month"
-              textColor="text-emerald-600"
+              textColor="text-emerald-600 dark:text-emerald-400"
             />
 
             {/* Card 3: Expenses */}
@@ -175,30 +175,30 @@ export default function Dashboard() {
               icon={<TrendingDown size={22} className="text-white" />}
               iconBg="bg-rose-500"
               subtext="Debits this month"
-              textColor="text-rose-600"
+              textColor="text-rose-600 dark:text-rose-400"
             />
 
             {/* Card 4: Budget Limit */}
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-between">
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 flex flex-col justify-between">
               <div className="flex justify-between items-start mb-2">
                 <div>
-                  <p className="text-sm font-medium text-slate-500">Monthly Budget</p>
-                  <h3 className="text-2xl font-bold text-slate-800 mt-1">
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Monthly Budget</p>
+                  <h3 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mt-1">
                     {formatCurrency(userData?.monthlyLimit || 0)}
                   </h3>
                 </div>
-                <div className="p-2 bg-indigo-100 rounded-lg">
-                  <Target size={22} className="text-indigo-600" />
+                <div className="p-2 bg-indigo-100 dark:bg-indigo-950 rounded-lg">
+                  <Target size={22} className="text-indigo-600 dark:text-indigo-400" />
                 </div>
               </div>
-              
+
               {/* Progress Bar */}
               <div className="mt-2">
-                <div className="flex justify-between text-xs font-medium text-slate-500 mb-1.5">
+                <div className="flex justify-between text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">
                   <span>Used: {Math.round(budgetPercentage)}%</span>
                   <span>{formatCurrency((userData.monthlyLimit || 0) - (userData.totalDebit || 0))} left</span>
                 </div>
-                <div className="w-full bg-slate-100 rounded-full h-2">
+                <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2">
                   <div 
                     className={`h-2 rounded-full transition-all duration-500 ${
                       budgetPercentage > 90 ? "bg-red-500" : "bg-indigo-500"
@@ -211,27 +211,27 @@ export default function Dashboard() {
           </div>
 
           {/* Recent Transactions Section */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="text-lg font-bold text-slate-800">Recent Transactions</h3>
-              <Link to="/transactions" className="text-sm text-blue-600 font-semibold hover:text-blue-700 flex items-center gap-1">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Recent Transactions</h3>
+              <Link to="/transactions" className="text-sm text-blue-600 dark:text-blue-400 font-semibold hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1">
                 View All <ArrowRight size={16} />
               </Link>
             </div>
 
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {recentTransactionsPreview.length > 0 ? (
                 recentTransactionsPreview.map((t) => (
-                  <div key={t._id} className="p-5 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                  <div key={t._id} className="p-5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors">
                     <div className="flex items-center gap-4">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                        t.type === "credit" ? "bg-emerald-100 text-emerald-600" : "bg-rose-100 text-rose-600"
+                        t.type === "credit" ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400" : "bg-rose-100 text-rose-600 dark:bg-rose-950 dark:text-rose-400"
                       }`}>
                         {t.type === "credit" ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
                       </div>
                       <div>
-                        <p className="font-semibold text-slate-800">{t.category || "Uncategorized"}</p>
-                        <p className="text-xs text-slate-500">
+                        <p className="font-semibold text-slate-800 dark:text-slate-100">{t.category || "Uncategorized"}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
                           {new Date(t.date).toLocaleDateString('en-IN', { 
                             month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' 
                           })} • {t.description || "No description"}
@@ -239,15 +239,15 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <span className={`font-bold whitespace-nowrap ${
-                      t.type === "credit" ? "text-emerald-600" : "text-slate-800"
+                      t.type === "credit" ? "text-emerald-600 dark:text-emerald-400" : "text-slate-800 dark:text-slate-100"
                     }`}>
                       {t.type === "credit" ? "+" : "-"} {formatCurrency(t.amount)}
                     </span>
                   </div>
                 ))
               ) : (
-                <div className="p-10 text-center text-slate-500">
-                  <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <div className="p-10 text-center text-slate-500 dark:text-slate-400">
+                  <div className="w-12 h-12 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
                     <MoreHorizontal className="text-slate-400" />
                   </div>
                   <p>No transactions recorded yet.</p>
@@ -262,15 +262,15 @@ export default function Dashboard() {
           </div>
 
           <div className="grid grid-cols-1 gap-6 mt-6">
-            <div className={`rounded-2xl p-6 shadow-sm border ${isOverspendingRisk ? "bg-red-50 border-red-200" : "bg-emerald-50 border-emerald-200"}`}>
+            <div className={`rounded-2xl p-6 shadow-sm border ${isOverspendingRisk ? "bg-red-50 border-red-200 dark:bg-red-950/40 dark:border-red-900" : "bg-emerald-50 border-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-900"}`}>
               <div className="flex items-center justify-between mb-3">
-                <h3 className={`font-semibold ${isOverspendingRisk ? "text-red-700" : "text-emerald-700"}`}>Budget Forecast</h3>
-                <AlertTriangle size={18} className={isOverspendingRisk ? "text-red-600" : "text-emerald-600"} />
+                <h3 className={`font-semibold ${isOverspendingRisk ? "text-red-700 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300"}`}>Budget Forecast</h3>
+                <AlertTriangle size={18} className={isOverspendingRisk ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"} />
               </div>
-              <p className={`text-2xl font-bold ${isOverspendingRisk ? "text-red-700" : "text-emerald-700"}`}>
+              <p className={`text-2xl font-bold ${isOverspendingRisk ? "text-red-700 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300"}`}>
                 {isOverspendingRisk ? "At Risk" : "On Track"}
               </p>
-              <p className={`text-sm mt-2 ${isOverspendingRisk ? "text-red-600" : "text-emerald-600"}`}>
+              <p className={`text-sm mt-2 ${isOverspendingRisk ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>
                 Projected spend is {formatCurrency(projectedSpend)} vs target {formatCurrency(monthlyTarget)}.
               </p>
             </div>
@@ -283,19 +283,19 @@ export default function Dashboard() {
 }
 
 // Reusable Stat Card Component
-function StatCard({ title, amount, icon, iconBg, subtext, textColor = "text-slate-800" }) {
+function StatCard({ title, amount, icon, iconBg, subtext, textColor = "text-slate-800 dark:text-slate-100" }) {
   return (
-    <div className="bg-white p-5 rounded-xl shadow-sm border border-slate-200">
+    <div className="bg-white dark:bg-slate-900 p-5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800">
       <div className="flex justify-between items-start">
         <div>
-          <p className="text-sm font-medium text-slate-500">{title}</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{title}</p>
           <h3 className={`text-2xl font-bold mt-1 ${textColor}`}>{amount}</h3>
         </div>
         <div className={`p-2.5 rounded-lg shadow-sm ${iconBg}`}>
           {icon}
         </div>
       </div>
-      <p className="text-xs text-slate-400 mt-3 font-medium">{subtext}</p>
+      <p className="text-xs text-slate-400 dark:text-slate-500 mt-3 font-medium">{subtext}</p>
     </div>
   );
 }

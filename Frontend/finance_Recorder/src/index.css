@@ -1,1 +1,13 @@
 @import "tailwindcss";
+
+/* Tailwind v4 is CSS-first: re-enable class-based dark mode (v3's darkMode:'class')
+   so `dark:` variants key off a `.dark` class on <html> instead of the OS setting. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Native form controls (selects, date pickers) and scrollbars follow the theme. */
+:root {
+  color-scheme: light;
+}
+:root.dark {
+  color-scheme: dark;
+}

@@ -71,16 +71,16 @@ export default function BillReminderFormModal({ mode = "add", reminder = null, o
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-white shadow-sm border border-slate-200 rounded-2xl w-full max-w-lg overflow-hidden">
-        <div className="bg-slate-50 border-b border-slate-100 p-6 flex items-start justify-between">
+      <div className="bg-white dark:bg-slate-900 shadow-sm border border-slate-200 dark:border-slate-700 rounded-2xl w-full max-w-lg overflow-hidden">
+        <div className="bg-slate-50 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800 p-6 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold text-slate-800">{mode === "edit" ? "Edit Bill Reminder" : "Add Bill Reminder"}</h2>
-            <p className="text-sm text-slate-500 mt-1">Get a heads-up before a bill is due.</p>
+            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">{mode === "edit" ? "Edit Bill Reminder" : "Add Bill Reminder"}</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Get a heads-up before a bill is due.</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
           >
             <X size={20} />
           </button>
@@ -88,7 +88,7 @@ export default function BillReminderFormModal({ mode = "add", reminder = null, o
 
         <form onSubmit={handleSubmit} className="p-6 md:p-8 space-y-6">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Bill Name</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Bill Name</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <FileText size={18} className="text-slate-400" />
@@ -100,14 +100,14 @@ export default function BillReminderFormModal({ mode = "add", reminder = null, o
                 onChange={handleChange}
                 placeholder="e.g. Electricity Bill"
                 required
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Amount</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Amount</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <IndianRupee size={18} className="text-slate-400" />
@@ -121,13 +121,13 @@ export default function BillReminderFormModal({ mode = "add", reminder = null, o
                   onChange={handleChange}
                   placeholder="0.00"
                   required
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Due Date</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Due Date</label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <Calendar size={18} className="text-slate-400" />
@@ -138,14 +138,14 @@ export default function BillReminderFormModal({ mode = "add", reminder = null, o
                   value={form.dueDate}
                   onChange={handleChange}
                   required
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                 />
               </div>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Notify Days Before</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Notify Days Before</label>
             <div className="relative max-w-[10rem]">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <BellRing size={18} className="text-slate-400" />
@@ -156,12 +156,12 @@ export default function BillReminderFormModal({ mode = "add", reminder = null, o
                 min="0"
                 value={form.notifyDaysBefore}
                 onChange={handleChange}
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
               />
             </div>
           </div>
 
-          <label className="flex items-center gap-3 p-4 border border-slate-200 rounded-xl bg-slate-50 cursor-pointer">
+          <label className="flex items-center gap-3 p-4 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800 cursor-pointer">
             <input
               type="checkbox"
               name="recurring"
@@ -170,20 +170,20 @@ export default function BillReminderFormModal({ mode = "add", reminder = null, o
               className="w-4 h-4 accent-blue-600"
             />
             <div>
-              <span className="font-medium text-slate-800">Recurring monthly</span>
-              <p className="text-xs text-slate-500 mt-0.5">Automatically rolls to next month once it's past due.</p>
+              <span className="font-medium text-slate-800 dark:text-slate-100">Recurring monthly</span>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Automatically rolls to next month once it's past due.</p>
             </div>
           </label>
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">{error}</div>
+            <div className="p-3 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-red-700 dark:text-red-300 text-sm rounded-lg">{error}</div>
           )}
 
           <div className="pt-2 flex gap-3 flex-row-reverse">
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white shadow-lg bg-blue-600 hover:bg-blue-700 shadow-blue-200 transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white shadow-lg bg-blue-600 hover:bg-blue-700 shadow-blue-200 dark:shadow-none transition-all disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>
@@ -201,7 +201,7 @@ export default function BillReminderFormModal({ mode = "add", reminder = null, o
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-3 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-all"
+              className="px-6 py-3 rounded-xl font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
             >
               Cancel
             </button>
