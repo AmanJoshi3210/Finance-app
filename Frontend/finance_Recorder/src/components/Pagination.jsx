@@ -45,9 +45,9 @@ export default function Pagination({ page, totalPages, totalItems, pageSize, onP
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 px-1">
-      <p className="text-xs text-slate-500">
-        Showing <span className="font-medium text-slate-700">{start}-{end}</span> of{" "}
-        <span className="font-medium text-slate-700">{totalItems}</span> records
+      <p className="text-xs text-slate-500 dark:text-slate-400">
+        Showing <span className="font-medium text-slate-700 dark:text-slate-200">{start}-{end}</span> of{" "}
+        <span className="font-medium text-slate-700 dark:text-slate-200">{totalItems}</span> records
       </p>
 
       <div className="flex items-center gap-1">
@@ -55,7 +55,7 @@ export default function Pagination({ page, totalPages, totalItems, pageSize, onP
           type="button"
           onClick={() => onPageChange(page - 1)}
           disabled={page === 1}
-          className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           aria-label="Previous page"
         >
           <ChevronLeft size={16} />
@@ -75,7 +75,7 @@ export default function Pagination({ page, totalPages, totalItems, pageSize, onP
               className={`min-w-[2.25rem] px-2 py-2 rounded-lg text-sm font-medium transition-colors ${
                 p === page
                   ? "bg-blue-600 text-white shadow-sm"
-                  : "text-slate-600 border border-slate-200 hover:bg-slate-50"
+                  : "text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/60"
               }`}
             >
               {p}
@@ -87,7 +87,7 @@ export default function Pagination({ page, totalPages, totalItems, pageSize, onP
           type="button"
           onClick={() => onPageChange(page + 1)}
           disabled={page === totalPages}
-          className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           aria-label="Next page"
         >
           <ChevronRight size={16} />

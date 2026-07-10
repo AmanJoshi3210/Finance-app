@@ -12,6 +12,7 @@ import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import PreviousMonthsSummary from "./pages/PreviousMonthsSummary";
 import RecurringTransactions from "./pages/RecurringTransactions";
+import ImportTransactions from "./pages/ImportTransactions";
 import SavingsGoals from "./pages/SavingsGoals";
 import BillReminders from "./pages/BillReminders";
 
@@ -44,6 +45,14 @@ function App() {
           element={
             <ProtectedRoute>
               <AddTransaction />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/import"
+          element={
+            <ProtectedRoute>
+              <ImportTransactions />
             </ProtectedRoute>
           }
         />

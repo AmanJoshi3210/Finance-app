@@ -7,6 +7,7 @@ import ConfirmDialog from "../components/ConfirmDialog";
 import Pagination from "../components/Pagination";
 import axiosInstance from "../api/axiosInstance";
 import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   Loader2,
   ArrowUpRight,
@@ -17,6 +18,8 @@ import {
   SlidersHorizontal,
   Pencil,
   Trash2,
+  Download,
+  Upload,
 } from "lucide-react";
 
 const PAGE_SIZE = 5;
@@ -33,6 +36,7 @@ export default function Transactions() {
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   // ✅ State for Mobile Sidebar
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -142,6 +146,39 @@ export default function Transactions() {
     });
   };
 
+  // Download the (filtered) history as CSV. The server builds the file; we
+  // just receive it as a blob and trigger a browser download.
+  const handleExportCsv = async () => {
+    setExporting(true);
+    try {
+      const res = await axiosInstance.get("/api/transactions/export", {
+        params: {
+          type: typeFilter === "all" ? undefined : typeFilter,
+          search: debouncedQuery || undefined,
+        },
+        responseType: "blob",
+      });
+
+      const url = URL.createObjectURL(res.data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
+      if (error.response?.status === 401) {
+        navigate("/login");
+      } else {
+        alert("Could not export transactions. Please try again.");
+      }
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const handleEditClick = (transaction) => {
     setConfirmDialog({
       title: "Edit transaction?",
@@ -156,7 +193,7 @@ export default function Transactions() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 relative">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 relative">
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
       {/* Main Content Area */}
@@ -167,11 +204,29 @@ export default function Transactions() {
           {/* Header & Filter Placeholder */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-slate-800">Recent Transactions</h1>
-              <p className="text-slate-500 text-sm mt-1">View and manage your financial records.</p>
+              <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Recent Transactions</h1>
+              <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">View and manage your financial records.</p>
             </div>
 
-            <div className="w-full md:w-auto flex gap-2">
+            <div className="w-full md:w-auto flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleExportCsv}
+                disabled={exporting}
+                className="inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shadow-sm disabled:opacity-50"
+              >
+                {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                Export CSV
+              </button>
+
+              <Link
+                to="/import"
+                className="inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shadow-sm"
+              >
+                <Upload size={16} />
+                Import
+              </Link>
+
               {/* Search Input */}
               <div className="relative w-full md:w-64">
                 <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -182,7 +237,7 @@ export default function Transactions() {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Search transactions..."
-                  className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
+                  className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm"
                 />
               </div>
 
@@ -191,7 +246,7 @@ export default function Transactions() {
                 <select
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
-                  className="appearance-none pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                  className="appearance-none pl-9 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
                 >
                   <option value="all">All</option>
                   <option value="credit">Credit</option>
@@ -205,44 +260,44 @@ export default function Transactions() {
           {/* Loading State */}
           {loading && (
             <div className="flex flex-col items-center justify-center py-20">
-              <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-              <p className="text-slate-500 font-medium">Loading records...</p>
+              <Loader2 className="w-10 h-10 text-blue-600 dark:text-blue-400 animate-spin mb-4" />
+              <p className="text-slate-500 dark:text-slate-400 font-medium">Loading records...</p>
             </div>
           )}
 
           {/* No Data State */}
           {!loading && transactions.length === 0 && (
-            <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 shadow-sm">
-              <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-12 text-center border border-slate-200 dark:border-slate-700 shadow-sm">
+              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Wallet className="w-8 h-8 text-slate-400" />
               </div>
-              <h3 className="text-lg font-semibold text-slate-700">No matching transactions</h3>
-              <p className="text-slate-500 mt-2">Try adjusting your filters or add a new credit/debit record.</p>
+              <h3 className="text-lg font-semibold text-slate-700 dark:text-slate-200">No matching transactions</h3>
+              <p className="text-slate-500 dark:text-slate-400 mt-2">Try adjusting your filters or add a new credit/debit record.</p>
             </div>
           )}
 
           {/* Transactions List */}
           {!loading && transactions.length > 0 && (
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="divide-y divide-slate-100">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
                 {transactions.map((t) => {
                   const isCredit = t.type === "credit";
 
                   return (
                     <div
                       key={t._id}
-                      className="group p-5 hover:bg-slate-50 transition-colors duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                      className="group p-5 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors duration-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
                     >
                       {/* Left: Icon & Description */}
                       <div className="flex items-start gap-4">
-                        <div className={`p-3 rounded-full shrink-0 ${isCredit ? "bg-emerald-100 text-emerald-600" : "bg-red-100 text-red-600"}`}>
+                        <div className={`p-3 rounded-full shrink-0 ${isCredit ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400" : "bg-red-100 dark:bg-red-950 text-red-600 dark:text-red-400"}`}>
                           {isCredit ? <ArrowDownLeft size={20} /> : <ArrowUpRight size={20} />}
                         </div>
 
                         <div>
-                          <h4 className="font-semibold text-slate-800 text-base">{t.category || "General"}</h4>
-                          <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
-                            <span className="capitalize px-2 py-0.5 rounded bg-slate-100 text-xs font-medium border border-slate-200">{t.type}</span>
+                          <h4 className="font-semibold text-slate-800 dark:text-slate-100 text-base">{t.category || "General"}</h4>
+                          <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 mt-1">
+                            <span className="capitalize px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-xs font-medium border border-slate-200 dark:border-slate-700">{t.type}</span>
                             <span className="hidden sm:inline">•</span>
                             <span className="line-clamp-1">{t.description || "No description provided"}</span>
                           </div>
@@ -252,7 +307,7 @@ export default function Transactions() {
                       {/* Right: Amount, Date & Actions */}
                       <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
                         <div className="text-right flex flex-row sm:flex-col justify-between items-center sm:items-end gap-2 sm:gap-0">
-                          <span className={`text-lg font-bold tracking-tight ${isCredit ? "text-emerald-600" : "text-slate-800"}`}>
+                          <span className={`text-lg font-bold tracking-tight ${isCredit ? "text-emerald-600 dark:text-emerald-400" : "text-slate-800 dark:text-slate-100"}`}>
                             {isCredit ? "+" : "-"} {formatCurrency(t.amount)}
                           </span>
 
@@ -266,7 +321,7 @@ export default function Transactions() {
                           <button
                             type="button"
                             onClick={() => handleEditClick(t)}
-                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-2 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-lg transition-colors"
                             aria-label="Edit transaction"
                           >
                             <Pencil size={16} />
@@ -275,7 +330,7 @@ export default function Transactions() {
                             type="button"
                             onClick={() => handleDelete(t._id)}
                             disabled={deletingId === t._id}
-                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                            className="p-2 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors disabled:opacity-50"
                             aria-label="Delete transaction"
                           >
                             {deletingId === t._id ? (

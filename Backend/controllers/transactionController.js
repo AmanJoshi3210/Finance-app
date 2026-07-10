@@ -217,24 +217,31 @@ export const deleteTransaction = async (req, res) => {
   }
 };
 
+// Builds the Mongo filter for a user's transaction list. Shared by the
+// paginated list view and the CSV export so both honor the same
+// type/search query params.
+const buildTransactionFilter = (userId, { type, search } = {}) => {
+  const filter = { userId };
+  if (type && type !== "all") {
+    filter.type = type;
+  }
+  if (search && search.trim()) {
+    // Escape regex metacharacters so user input can't break/DoS the pattern
+    const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(escaped, "i");
+    filter.$or = [{ category: regex }, { description: regex }, { method: regex }];
+  }
+  return filter;
+};
+
 // 📄 Get a page of transactions for a user (filterable by type/search)
 export const getUserTransactions = async (req, res) => {
   try {
     const userId = req.user.userId;
     const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 100);
-    const { type, search } = req.query;
 
-    const filter = { userId };
-    if (type && type !== "all") {
-      filter.type = type;
-    }
-    if (search && search.trim()) {
-      // Escape regex metacharacters so user input can't break/DoS the pattern
-      const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const regex = new RegExp(escaped, "i");
-      filter.$or = [{ category: regex }, { description: regex }, { method: regex }];
-    }
+    const filter = buildTransactionFilter(userId, req.query);
 
     const [transactions, total] = await Promise.all([
       Transaction.find(filter)
@@ -253,6 +260,121 @@ export const getUserTransactions = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// Quotes a CSV field per RFC 4180 (embedded quotes doubled) so commas,
+// quotes, and newlines in user data can't break the row structure.
+const csvField = (value) => {
+  const str = value === null || value === undefined ? "" : String(value);
+  return /[",\n\r]/.test(str) ? `"${str.replace(/"/g, '""')}"` : str;
+};
+
+// 📤 Download the user's transactions as a CSV attachment. Accepts the same
+// type/search params as the list view so the export matches what's on screen.
+export const exportTransactionsCsv = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const filter = buildTransactionFilter(userId, req.query);
+
+    const transactions = await Transaction.find(filter).sort({ date: -1 }).lean();
+
+    const header = ["Date", "Type", "Category", "Method", "Amount", "Description"];
+    const rows = transactions.map((t) =>
+      [
+        t.date ? new Date(t.date).toISOString() : "",
+        t.type,
+        t.category || "",
+        t.method || "",
+        t.amount,
+        t.description || "",
+      ]
+        .map(csvField)
+        .join(",")
+    );
+
+    const csv = [header.join(","), ...rows].join("\r\n");
+    const filename = `transactions-${new Date().toISOString().slice(0, 10)}.csv`;
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(csv);
+  } catch (error) {
+    console.error("Export Transactions Error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Matches the client-side chunk size in ImportTransactions.jsx, with headroom.
+const BULK_MAX_ROWS = 500;
+
+// 📥 Bulk-insert imported transactions (CSV import). Validates every row up
+// front (all-or-nothing, so a partial batch can't leave totals half-applied),
+// inserts in one insertMany, and applies the summed credit/debit delta to
+// UserData once at the end instead of per-row. Deliberately skips the
+// real-time notification checks: imports are historical data and would fire
+// spurious budget/unusual-activity alerts.
+export const bulkAddTransactions = async (req, res) => {
+  const session = await mongoose.startSession();
+  try {
+    const userId = req.user.userId;
+    const rows = req.body?.transactions;
+
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return res.status(400).json({ message: "transactions must be a non-empty array" });
+    }
+    if (rows.length > BULK_MAX_ROWS) {
+      return res.status(400).json({ message: `Too many rows; send at most ${BULK_MAX_ROWS} per request` });
+    }
+
+    const docs = [];
+    for (let i = 0; i < rows.length; i++) {
+      const { type, method, category, amount, description, date } = rows[i] || {};
+
+      if (!["credit", "debit", "withdrawal"].includes(type)) {
+        return res.status(400).json({ message: `Row ${i + 1}: invalid type "${type}"` });
+      }
+
+      const numericAmount = Number(amount);
+      if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+        return res.status(400).json({ message: `Row ${i + 1}: amount must be a positive number` });
+      }
+
+      let parsedDate;
+      if (date !== undefined && date !== null && date !== "") {
+        parsedDate = new Date(date);
+        if (Number.isNaN(parsedDate.getTime())) {
+          return res.status(400).json({ message: `Row ${i + 1}: invalid date "${date}"` });
+        }
+      }
+
+      docs.push({
+        userId,
+        type,
+        method: method || "Other",
+        category: category || "Other",
+        amount: numericAmount,
+        description: typeof description === "string" ? description : "",
+        ...(parsedDate ? { date: parsedDate } : {}),
+      });
+    }
+
+    const creditDelta = docs.reduce((sum, d) => sum + (d.type === "credit" ? d.amount : 0), 0);
+    const debitDelta = docs.reduce((sum, d) => sum + (d.type === "credit" ? 0 : d.amount), 0);
+
+    let inserted = 0;
+    await session.withTransaction(async () => {
+      const created = await Transaction.insertMany(docs, { session });
+      inserted = created.length;
+      await applyUserDataDelta(userId, { creditDelta, debitDelta }, session);
+    });
+
+    res.status(201).json({ inserted });
+  } catch (error) {
+    console.error("Bulk Add Transactions Error:", error);
+    res.status(500).json({ message: error.message });
+  } finally {
+    await session.endSession();
   }
 };
 

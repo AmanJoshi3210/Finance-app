@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Menu, User, HelpCircle, Bell, BadgeIndianRupee, AlertTriangle, CalendarClock } from "lucide-react";
+import { Menu, User, HelpCircle, Bell, BadgeIndianRupee, AlertTriangle, CalendarClock, Sun, Moon } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import axiosInstance from "../api/axiosInstance";
 
 const NOTIFICATION_ICONS = {
@@ -23,6 +24,7 @@ const formatRelativeTime = (isoDate) => {
 
 export default function Navbar({ title, onMenuClick }) {
   const { user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -77,24 +79,32 @@ export default function Navbar({ title, onMenuClick }) {
   };
 
   return (
-    <div className="bg-white shadow-sm border-b border-slate-200 h-16 flex items-center justify-between px-4 md:px-8">
+    <div className="bg-white dark:bg-slate-900 shadow-sm border-b border-slate-200 dark:border-slate-800 h-16 flex items-center justify-between px-4 md:px-8">
       <div className="flex items-center gap-3">
         {/* ✅ Mobile Menu Button (Hidden on Desktop) */}
         <button
           onClick={onMenuClick}
-          className="p-2 -ml-2 text-slate-600 hover:bg-slate-100 rounded-lg md:hidden transition-colors"
+          className="p-2 -ml-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg md:hidden transition-colors"
         >
           <Menu size={24} />
         </button>
 
-        <h1 className="text-xl font-bold text-slate-800">{title}</h1>
+        <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">{title}</h1>
       </div>
 
       <div className="flex items-center gap-2">
+        <button
+          onClick={toggleTheme}
+          className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
+
         <div className="relative" ref={notifRef}>
           <button
             onClick={() => setIsNotifOpen((prev) => !prev)}
-            className="relative p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+            className="relative p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
             aria-label="Notifications"
           >
             <Bell size={20} />
@@ -106,14 +116,14 @@ export default function Navbar({ title, onMenuClick }) {
           </button>
 
           {isNotifOpen && (
-            <div className="absolute right-0 mt-2 w-80 max-w-[90vw] bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-50">
-              <div className="px-4 py-2 border-b border-slate-100">
-                <h2 className="text-sm font-bold text-slate-800">Notifications</h2>
+            <div className="absolute right-0 mt-2 w-80 max-w-[90vw] bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 py-2 z-50">
+              <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800">
+                <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">Notifications</h2>
               </div>
 
               <div className="max-h-96 overflow-y-auto">
                 {notifications.length === 0 ? (
-                  <p className="px-4 py-6 text-sm text-slate-500 text-center">No notifications yet.</p>
+                  <p className="px-4 py-6 text-sm text-slate-500 dark:text-slate-400 text-center">No notifications yet.</p>
                 ) : (
                   notifications.map((notification) => {
                     const Icon = NOTIFICATION_ICONS[notification.type] || Bell;
@@ -121,16 +131,16 @@ export default function Navbar({ title, onMenuClick }) {
                       <button
                         key={notification._id}
                         onClick={() => handleNotificationClick(notification)}
-                        className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 ${
-                          notification.read ? "bg-white" : "bg-blue-50/60"
+                        className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-800 ${
+                          notification.read ? "bg-white dark:bg-slate-900" : "bg-blue-50/60 dark:bg-blue-950/40"
                         }`}
                       >
-                        <Icon size={16} className="shrink-0 mt-0.5 text-blue-600" />
+                        <Icon size={16} className="shrink-0 mt-0.5 text-blue-600 dark:text-blue-400" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-slate-700 whitespace-normal break-words">
+                          <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-normal break-words">
                             {notification.message}
                           </p>
-                          <p className="text-xs text-slate-400 mt-1">
+                          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
                             {formatRelativeTime(notification.createdAt)}
                           </p>
                         </div>
@@ -149,19 +159,19 @@ export default function Navbar({ title, onMenuClick }) {
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setIsMenuOpen((prev) => !prev)}
-            className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-sm hover:ring-2 hover:ring-blue-200 transition-all"
+            className="w-8 h-8 bg-blue-100 dark:bg-blue-950 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm hover:ring-2 hover:ring-blue-200 dark:hover:ring-blue-800 transition-all"
           >
             {user?.name ? user.name.charAt(0).toUpperCase() : "U"}
           </button>
 
           {isMenuOpen && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-slate-200 py-2 z-50">
+            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 py-2 z-50">
               <button
                 onClick={() => {
                   setIsMenuOpen(false);
                   navigate("/profile");
                 }}
-                className="w-full flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
               >
                 <User size={16} />
                 My Profile
@@ -170,7 +180,7 @@ export default function Navbar({ title, onMenuClick }) {
               <a
                 href="mailto:support@fintrack.app"
                 onClick={() => setIsMenuOpen(false)}
-                className="w-full flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
               >
                 <HelpCircle size={16} />
                 Help & Support
