@@ -1,8 +1,36 @@
 import mongoose from "mongoose";
+import ExcelJS from "exceljs";
 import Transaction from "../Models/Transactions.js";
 import UserData from "../Models/UserData.js";
 import User from "../Models/User.js";
+import MonthlySummary from "../Models/MonthlySummary.js";
+import Account from "../Models/Account.js";
 import { checkOverallBudget, checkCategoryBudget, checkUnusualActivity } from "../services/notificationService.js";
+
+// Minimum months of MonthlySummary history before trusting a trend line over
+// a same-month pace projection — matches the threshold the old (removed)
+// TensorFlow prototype used, which independently arrived at the same number.
+const FORECAST_TREND_MIN_MONTHS = 3;
+
+// Ordinary least squares over (0, y0), (1, y1), ... — projects one step past
+// the last known point. Clamped at 0 by the caller, same defensive floor
+// applyUserDataDelta already uses for running totals.
+const linearForecastNext = (values) => {
+  const n = values.length;
+  const xMean = (n - 1) / 2;
+  const yMean = values.reduce((sum, v) => sum + v, 0) / n;
+
+  let numerator = 0;
+  let denominator = 0;
+  for (let i = 0; i < n; i++) {
+    numerator += (i - xMean) * (values[i] - yMean);
+    denominator += (i - xMean) * (i - xMean);
+  }
+
+  const slope = denominator === 0 ? 0 : numerator / denominator;
+  const intercept = yMean - slope * xMean;
+  return slope * n + intercept; // predict at x = n (one past the last index, n-1)
+};
 
 // Applies a delta to UserData's running totals inside the caller's
 // transaction, clamping each total at 0 with an aggregation-pipeline update
@@ -41,34 +69,81 @@ const applyUserDataDelta = async (userId, { creditDelta = 0, debitDelta = 0 }, s
 // notification preferences. Shared by add and update so both paths behave
 // identically.
 const runNotificationChecks = async ({ userId, category, date, transaction, newDebit, monthlyLimit, session }) => {
-  const user = await User.findById(userId).select("notificationPreferences").session(session);
+  const user = await User.findById(userId).select("notificationPreferences email").session(session);
   const prefs = user?.notificationPreferences || {};
+  const userEmail = user?.email;
 
   if (prefs.budgetAlerts !== false) {
-    await checkOverallBudget({ userId, newDebit, monthlyLimit, date, session });
-    await checkCategoryBudget({ userId, category, date, session });
+    await checkOverallBudget({ userId, newDebit, monthlyLimit, date, session, userEmail });
+    await checkCategoryBudget({ userId, category, date, session, userEmail });
   }
 
   if (prefs.unusualActivity) {
-    await checkUnusualActivity({ userId, transaction, session });
+    await checkUnusualActivity({ userId, transaction, session, userEmail });
   }
+};
+
+// Lowercased/trimmed/deduped so tag filtering can stay a simple $in match
+// instead of per-tag regex.
+const normalizeTags = (tags) =>
+  Array.isArray(tags)
+    ? [...new Set(tags.map((t) => String(t).trim().toLowerCase()).filter(Boolean))]
+    : [];
+
+// Same lazy self-healing idiom used elsewhere in this codebase (e.g. the
+// recurring-bill due-date rollforward): find the user's default account, or
+// create one on first use. This is what lets every transaction-creating call
+// site keep working unchanged now that accounts exist.
+export const getOrCreateDefaultAccount = async (userId, session) => {
+  let account = await Account.findOne({ userId, isDefault: true, archived: false }).session(session);
+  if (!account) {
+    [account] = await Account.create(
+      [{ userId, name: "General", type: "other", openingBalance: 0, balance: 0, isDefault: true }],
+      { session }
+    );
+  }
+  return account;
+};
+
+// Resolves a caller-supplied accountId (must belong to the user and not be
+// archived) or falls back to `fallbackAccountId` resolution — used by both
+// "create" (fallback = default account) and "update" (fallback = the
+// transaction's existing account, itself defaulting if it had none).
+const resolveAccount = async (userId, accountId, session) => {
+  if (accountId) {
+    const account = await Account.findOne({ _id: accountId, userId, archived: false }).session(session);
+    if (account) return account;
+  }
+  return getOrCreateDefaultAccount(userId, session);
+};
+
+// Plain atomic increment — deliberately NOT clamped at 0 like
+// applyUserDataDelta's totals. An account balance is a single signed running
+// total that must legitimately go negative (an overdrawn account, money owed
+// on a credit card); clamping here would silently break debt tracking.
+const applyAccountBalanceDelta = async (accountId, signedDelta, session) => {
+  if (!accountId || !signedDelta) return;
+  await Account.findOneAndUpdate({ _id: accountId }, { $inc: { balance: signedDelta } }, { session });
 };
 
 // Shared by the HTTP add-transaction handler and the recurring-transaction
 // job, so both paths create a transaction and update UserData totals
 // identically instead of duplicating the logic.
-export const createTransactionRecord = async (userId, { type, method, category, amount, description }, session) => {
+export const createTransactionRecord = async (userId, { type, method, category, amount, description, tags, accountId }, session) => {
   const numericAmount = Number(amount);
+  const account = await resolveAccount(userId, accountId, session);
 
   const [transaction] = await Transaction.create(
-    [{ userId, type, method, category, amount: numericAmount, description }],
+    [{ userId, type, method, category, amount: numericAmount, description, tags: normalizeTags(tags), accountId: account._id }],
     { session }
   );
 
   const creditDelta = type === "credit" ? numericAmount : 0;
   const debitDelta = type === "debit" || type === "withdrawal" ? numericAmount : 0;
+  const signedDelta = type === "credit" ? numericAmount : -numericAmount;
 
   const userData = await applyUserDataDelta(userId, { creditDelta, debitDelta }, session);
+  await applyAccountBalanceDelta(account._id, signedDelta, session);
 
   if (debitDelta > 0) {
     await runNotificationChecks({
@@ -93,14 +168,14 @@ export const addTransaction = async (req, res) => {
     }
 
     const userId = req.user.userId;
-    const { type, method, category, amount, description } = req.body;
+    const { type, method, category, amount, description, tags, accountId } = req.body;
 
     let transaction;
     await session.withTransaction(async () => {
       // Atomically increment the matching total so this can't be lost to a
       // race or interrupted mid-write (a stale read-modify-save previously
       // let one field's update silently disappear under concurrent requests).
-      transaction = await createTransactionRecord(userId, { type, method, category, amount, description }, session);
+      transaction = await createTransactionRecord(userId, { type, method, category, amount, description, tags, accountId }, session);
     });
 
     res.status(201).json(transaction);
@@ -119,7 +194,7 @@ export const updateTransaction = async (req, res) => {
   try {
     const userId = req.user.userId;
     const { id } = req.params;
-    const { type, method, category, amount, description } = req.body;
+    const { type, method, category, amount, description, tags, accountId } = req.body;
     const numericAmount = Number(amount);
 
     let transaction;
@@ -145,11 +220,33 @@ export const updateTransaction = async (req, res) => {
 
       const userData = await applyUserDataDelta(userId, { creditDelta, debitDelta }, session);
 
+      // Account balance: if accountId wasn't sent, keep the existing account
+      // (or self-heal onto the default one if this transaction predates
+      // accounts) rather than defaulting away from an explicitly-set account.
+      const oldAccountId = existingTransaction.accountId ? String(existingTransaction.accountId) : null;
+      const targetAccountId = accountId !== undefined ? accountId : existingTransaction.accountId;
+      const newAccount = await resolveAccount(userId, targetAccountId, session);
+      const newAccountId = String(newAccount._id);
+
+      const oldSigned = existingTransaction.type === "credit" ? existingTransaction.amount : -existingTransaction.amount;
+      const newSigned = type === "credit" ? numericAmount : -numericAmount;
+
+      if (oldAccountId === newAccountId) {
+        await applyAccountBalanceDelta(newAccount._id, newSigned - oldSigned, session);
+      } else {
+        if (oldAccountId) {
+          await applyAccountBalanceDelta(oldAccountId, -oldSigned, session);
+        }
+        await applyAccountBalanceDelta(newAccount._id, newSigned, session);
+      }
+
       existingTransaction.type = type;
       existingTransaction.method = method;
       existingTransaction.category = category;
       existingTransaction.amount = numericAmount;
       existingTransaction.description = description;
+      existingTransaction.tags = normalizeTags(tags);
+      existingTransaction.accountId = newAccount._id;
       await existingTransaction.save({ session });
 
       if (type === "debit" || type === "withdrawal") {
@@ -202,6 +299,13 @@ export const deleteTransaction = async (req, res) => {
         transaction.type === "debit" || transaction.type === "withdrawal" ? -transaction.amount : 0;
 
       await applyUserDataDelta(userId, { creditDelta, debitDelta }, session);
+
+      // Only reverse if this transaction actually had an account — a legacy
+      // transaction with none never contributed to any account's balance.
+      if (transaction.accountId) {
+        const signedAmount = transaction.type === "credit" ? transaction.amount : -transaction.amount;
+        await applyAccountBalanceDelta(transaction.accountId, -signedAmount, session);
+      }
     });
 
     if (notFound) {
@@ -218,19 +322,51 @@ export const deleteTransaction = async (req, res) => {
 };
 
 // Builds the Mongo filter for a user's transaction list. Shared by the
-// paginated list view and the CSV export so both honor the same
-// type/search query params.
-const buildTransactionFilter = (userId, { type, search } = {}) => {
+// paginated list view and the CSV/Excel export so both honor the same
+// type/search/date-range/tags query params.
+const buildTransactionFilter = (userId, { type, search, from, to, tags, accountId } = {}) => {
   const filter = { userId };
   if (type && type !== "all") {
     filter.type = type;
+  }
+  if (accountId && mongoose.Types.ObjectId.isValid(accountId)) {
+    filter.accountId = accountId;
   }
   if (search && search.trim()) {
     // Escape regex metacharacters so user input can't break/DoS the pattern
     const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const regex = new RegExp(escaped, "i");
-    filter.$or = [{ category: regex }, { description: regex }, { method: regex }];
+    // A regex condition against an array field (tags) matches if any element matches.
+    filter.$or = [{ category: regex }, { description: regex }, { method: regex }, { tags: regex }];
   }
+
+  // Optional tag filter: comma-separated list, OR semantics (matches any
+  // listed tag) — suits a checkbox-style filter UI. Tags are stored
+  // lowercased/trimmed, so normalize the same way here.
+  if (tags && tags.trim()) {
+    const tagList = tags.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
+    if (tagList.length > 0) filter.tags = { $in: tagList };
+  }
+
+  // Optional date range: `from`/`to` as YYYY-MM-DD. `to` is inclusive of the
+  // whole day, so the range covers [from 00:00, to 24:00). Invalid dates are
+  // ignored rather than erroring, matching how the other params behave.
+  const dateFilter = {};
+  if (from) {
+    const fromDate = new Date(`${from}T00:00:00.000Z`);
+    if (!Number.isNaN(fromDate.getTime())) dateFilter.$gte = fromDate;
+  }
+  if (to) {
+    const toDate = new Date(`${to}T00:00:00.000Z`);
+    if (!Number.isNaN(toDate.getTime())) {
+      toDate.setUTCDate(toDate.getUTCDate() + 1);
+      dateFilter.$lt = toDate;
+    }
+  }
+  if (Object.keys(dateFilter).length > 0) {
+    filter.date = dateFilter;
+  }
+
   return filter;
 };
 
@@ -279,7 +415,7 @@ export const exportTransactionsCsv = async (req, res) => {
 
     const transactions = await Transaction.find(filter).sort({ date: -1 }).lean();
 
-    const header = ["Date", "Type", "Category", "Method", "Amount", "Description"];
+    const header = ["Date", "Type", "Category", "Method", "Amount", "Description", "Tags"];
     const rows = transactions.map((t) =>
       [
         t.date ? new Date(t.date).toISOString() : "",
@@ -288,6 +424,7 @@ export const exportTransactionsCsv = async (req, res) => {
         t.method || "",
         t.amount,
         t.description || "",
+        (t.tags || []).join("; "),
       ]
         .map(csvField)
         .join(",")
@@ -301,6 +438,59 @@ export const exportTransactionsCsv = async (req, res) => {
     res.send(csv);
   } catch (error) {
     console.error("Export Transactions Error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 📤 Download the user's transactions as an Excel (.xlsx) attachment — same
+// filter params and row set as the CSV export, generated server-side (rather
+// than from whatever page happens to be loaded client-side) so the export
+// always covers the full filtered dataset, not just one paginated screen.
+export const exportTransactionsXlsx = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const filter = buildTransactionFilter(userId, req.query);
+
+    const transactions = await Transaction.find(filter).sort({ date: -1 }).lean();
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Transactions");
+
+    sheet.columns = [
+      { header: "Date", key: "date", width: 22 },
+      { header: "Type", key: "type", width: 12 },
+      { header: "Category", key: "category", width: 18 },
+      { header: "Method", key: "method", width: 14 },
+      { header: "Amount", key: "amount", width: 14 },
+      { header: "Description", key: "description", width: 32 },
+      { header: "Tags", key: "tags", width: 24 },
+    ];
+    sheet.getRow(1).font = { bold: true };
+
+    for (const t of transactions) {
+      sheet.addRow({
+        date: t.date ? new Date(t.date).toISOString() : "",
+        type: t.type,
+        category: t.category || "",
+        method: t.method || "",
+        amount: t.amount,
+        description: t.description || "",
+        tags: (t.tags || []).join(", "),
+      });
+    }
+    sheet.getColumn("amount").numFmt = "#,##0.00";
+
+    const filename = `transactions-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error("Export Transactions Xlsx Error:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -361,12 +551,19 @@ export const bulkAddTransactions = async (req, res) => {
 
     const creditDelta = docs.reduce((sum, d) => sum + (d.type === "credit" ? d.amount : 0), 0);
     const debitDelta = docs.reduce((sum, d) => sum + (d.type === "credit" ? 0 : d.amount), 0);
+    // No per-row account mapping in the import UI — the whole batch lands on
+    // one account, resolved once rather than per row.
+    const accountSignedTotal = docs.reduce((sum, d) => sum + (d.type === "credit" ? d.amount : -d.amount), 0);
 
     let inserted = 0;
     await session.withTransaction(async () => {
+      const account = await getOrCreateDefaultAccount(userId, session);
+      for (const doc of docs) doc.accountId = account._id;
+
       const created = await Transaction.insertMany(docs, { session });
       inserted = created.length;
       await applyUserDataDelta(userId, { creditDelta, debitDelta }, session);
+      await applyAccountBalanceDelta(account._id, accountSignedTotal, session);
     });
 
     res.status(201).json({ inserted });
@@ -433,6 +630,110 @@ export const getMonthlyTrend = async (req, res) => {
   }
 };
 
+// 💡 Spending insights for the dashboard: current vs previous month totals,
+// month-over-month change, top spending category, and average daily spend.
+// Computed from the ledger with UTC month boundaries, matching the month
+// convention used by the budget checks in notificationService.
+export const getSpendingInsights = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+
+    const now = new Date();
+    const currentMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const previousMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+    const nextMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+
+    const [monthTotals, topCategories] = await Promise.all([
+      // credit/debit totals for the current and previous month in one pass
+      Transaction.aggregate([
+        {
+          $match: {
+            userId: userObjectId,
+            date: { $gte: previousMonthStart, $lt: nextMonthStart },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              month: {
+                $cond: [{ $gte: ["$date", currentMonthStart] }, "current", "previous"],
+              },
+            },
+            credit: { $sum: { $cond: [{ $eq: ["$type", "credit"] }, "$amount", 0] } },
+            debit: {
+              $sum: { $cond: [{ $in: ["$type", ["debit", "withdrawal"]] }, "$amount", 0] },
+            },
+          },
+        },
+      ]),
+      // top debit category of the current month
+      Transaction.aggregate([
+        {
+          $match: {
+            userId: userObjectId,
+            type: { $in: ["debit", "withdrawal"] },
+            date: { $gte: currentMonthStart, $lt: nextMonthStart },
+          },
+        },
+        { $group: { _id: { $ifNull: ["$category", "Other"] }, total: { $sum: "$amount" } } },
+        { $sort: { total: -1 } },
+        { $limit: 1 },
+      ]),
+    ]);
+
+    const totalsByMonth = { current: { credit: 0, debit: 0 }, previous: { credit: 0, debit: 0 } };
+    for (const row of monthTotals) {
+      totalsByMonth[row._id.month] = { credit: row.credit, debit: row.debit };
+    }
+
+    const { current, previous } = totalsByMonth;
+    const changePct =
+      previous.debit > 0
+        ? Math.round(((current.debit - previous.debit) / previous.debit) * 100)
+        : null;
+
+    const daysElapsed = now.getUTCDate();
+    const avgDailySpend = daysElapsed > 0 ? current.debit / daysElapsed : 0;
+
+    // Next-month spend forecast: a real trend line once there's enough
+    // history, falling back to a pace-based projection of the current month
+    // otherwise. monthsOfHistory is surfaced so the frontend can label which
+    // method produced the number instead of presenting a guess as certain.
+    const history = await MonthlySummary.find({ userId }).sort({ month: 1 }).lean();
+    let forecast;
+    if (history.length >= FORECAST_TREND_MIN_MONTHS) {
+      const projected = linearForecastNext(history.map((h) => h.totalDebit));
+      forecast = {
+        method: "trend",
+        projectedSpend: Math.max(projected, 0),
+        monthsOfHistory: history.length,
+      };
+    } else {
+      const daysInMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0)).getUTCDate();
+      forecast = {
+        method: "pace",
+        projectedSpend: avgDailySpend * daysInMonth,
+        monthsOfHistory: history.length,
+      };
+    }
+
+    res.json({
+      currentMonth: current,
+      previousMonth: previous,
+      changePct,
+      topCategory: topCategories[0]
+        ? { name: topCategories[0]._id, amount: topCategories[0].total }
+        : null,
+      avgDailySpend,
+      forecast,
+    });
+  } catch (error) {
+    console.error("Spending Insights Error:", error);
+    res.status(500).json({ message: "Server error fetching spending insights" });
+  }
+};
+
 export const addOrUpdateMonthlyLimit = async (req, res) => {
   try {
     const { monthlyLimit } = req.body;
@@ -471,6 +772,19 @@ export const getUserCategories = async (req, res) => {
     res.json(categories.filter(Boolean));
   } catch (error) {
     console.error("Get User Categories Error:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Distinct tags the user has actually used, for powering a tag-filter
+// checklist instead of requiring free-text entry.
+export const getUserTags = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const tags = await Transaction.distinct("tags", { userId });
+    res.json(tags.filter(Boolean).sort());
+  } catch (error) {
+    console.error("Get User Tags Error:", error);
     res.status(500).json({ message: error.message });
   }
 };

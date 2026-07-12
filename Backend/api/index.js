@@ -14,6 +14,7 @@ import recurringTransactionRoutes from "../Routes/recurringTransactionRoutes.js"
 import savingsGoalRoutes from "../Routes/savingsGoalRoutes.js";
 import billReminderRoutes from "../Routes/billReminderRoutes.js";
 import notificationRoutes from "../Routes/notificationRoutes.js";
+import accountRoutes from "../Routes/accountRoutes.js";
 
 dotenv.config();
 
@@ -66,6 +67,7 @@ app.use("/api/recurring-transactions", recurringTransactionRoutes);
 app.use("/api/savings-goals", savingsGoalRoutes);
 app.use("/api/bill-reminders", billReminderRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/accounts", accountRoutes);
 
 // 🚀 IMPORTANT: export app (NO listen)
 // export default app;

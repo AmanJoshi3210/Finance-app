@@ -20,6 +20,8 @@ const emptyForm = {
   category: "",
   amount: "",
   description: "",
+  tagsInput: "",
+  accountId: "",
 };
 
 // Shared add/edit form. Renders inline (embedded in a page) by default, or as
@@ -35,6 +37,7 @@ export default function TransactionFormModal({
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [accounts, setAccounts] = useState([]);
 
   useEffect(() => {
     if (mode === "edit" && transaction) {
@@ -44,9 +47,29 @@ export default function TransactionFormModal({
         category: transaction.category || "",
         amount: transaction.amount ?? "",
         description: transaction.description || "",
+        tagsInput: (transaction.tags || []).join(", "),
+        accountId: transaction.accountId || "",
       });
     }
   }, [mode, transaction]);
+
+  // Populate the account picker, defaulting new transactions to the user's
+  // default account so the selector never opens on nothing selected.
+  useEffect(() => {
+    axiosInstance
+      .get("/api/accounts")
+      .then((res) => {
+        setAccounts(res.data);
+        if (mode === "add") {
+          const defaultAccount = res.data.find((a) => a.isDefault) || res.data[0];
+          if (defaultAccount) {
+            setForm((prev) => (prev.accountId ? prev : { ...prev, accountId: defaultAccount._id }));
+          }
+        }
+      })
+      .catch((error) => console.error("Failed to load accounts:", error));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
 
   const resetForm = () => setForm(emptyForm);
 
@@ -64,11 +87,18 @@ export default function TransactionFormModal({
 
     setLoading(true);
     try {
+      const tags = form.tagsInput
+        .split(",")
+        .map((t) => t.trim())
+        .filter(Boolean);
+      const payload = { ...form, tags, accountId: form.accountId || undefined };
+      delete payload.tagsInput;
+
       let response;
       if (mode === "edit") {
-        response = await axiosInstance.put(`/api/transactions/${transaction._id}`, form);
+        response = await axiosInstance.put(`/api/transactions/${transaction._id}`, payload);
       } else {
-        response = await axiosInstance.post("/api/transactions", form);
+        response = await axiosInstance.post("/api/transactions", payload);
         resetForm();
       }
       onSaved?.(response.data);
@@ -184,27 +214,52 @@ export default function TransactionFormModal({
           </div>
         </div>
 
-        {/* Method */}
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Payment Method</label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Wallet size={18} className="text-slate-400" />
+        {/* Method & Account */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Payment Method</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Wallet size={18} className="text-slate-400" />
+              </div>
+              <select
+                name="method"
+                value={form.method}
+                onChange={handleChange}
+                required
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all appearance-none"
+              >
+                <option value="">Select Method</option>
+                <option value="cash">Cash</option>
+                <option value="upi">UPI</option>
+                <option value="card">Card</option>
+                <option value="bank">Bank Transfer</option>
+              </select>
             </div>
-            <select
-              name="method"
-              value={form.method}
-              onChange={handleChange}
-              required
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all appearance-none"
-            >
-              <option value="">Select Method</option>
-              <option value="cash">Cash</option>
-              <option value="upi">UPI</option>
-              <option value="card">Card</option>
-              <option value="bank">Bank Transfer</option>
-            </select>
           </div>
+
+          {accounts.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">Account</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Wallet size={18} className="text-slate-400" />
+                </div>
+                <select
+                  name="accountId"
+                  value={form.accountId}
+                  onChange={handleChange}
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all appearance-none"
+                >
+                  {accounts.map((account) => (
+                    <option key={account._id} value={account._id}>
+                      {account.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Description */}
@@ -225,6 +280,27 @@ export default function TransactionFormModal({
               className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all resize-none"
             />
           </div>
+        </div>
+
+        {/* Tags */}
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1.5">
+            Tags (Optional)
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Tags size={18} className="text-slate-400" />
+            </div>
+            <input
+              type="text"
+              name="tagsInput"
+              value={form.tagsInput}
+              onChange={handleChange}
+              placeholder="e.g. work, reimbursable"
+              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+            />
+          </div>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">Separate multiple tags with commas.</p>
         </div>
 
         {error && (

@@ -36,6 +36,19 @@ export default function Login() {
       navigate("/dashboard", { replace: true });
     } catch (err) {
       console.error("Login failed:", err);
+
+      // Unverified accounts can't log in yet — send them to finish the
+      // 2-step signup verification instead of just showing an error.
+      if (err.response?.data?.requiresVerification) {
+        navigate("/verify-otp", {
+          state: {
+            email: err.response.data.email || email.trim(),
+            message: "Please verify your email to continue.",
+          },
+        });
+        return;
+      }
+
       setError(err.response?.data?.message || "Invalid credentials. Please try again.");
       setIsLoading(false); // Stop loading on error
     }

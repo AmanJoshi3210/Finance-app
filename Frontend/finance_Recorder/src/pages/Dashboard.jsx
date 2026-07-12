@@ -18,6 +18,15 @@ import {
   AlertTriangle
 } from "lucide-react";
 
+const ACCOUNT_TYPE_LABELS = {
+  bank: "Bank",
+  credit_card: "Credit Card",
+  cash: "Cash",
+  wallet: "Wallet",
+  investment: "Investment",
+  other: "Other",
+};
+
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
   
@@ -29,6 +38,8 @@ export default function Dashboard() {
   const [monthlyTrend, setMonthlyTrend] = useState([]);
   const [categoryTotals, setCategoryTotals] = useState({});
   const [categoryBudgets, setCategoryBudgets] = useState({});
+  const [forecast, setForecast] = useState(null);
+  const [accounts, setAccounts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const getCategoryTotals = (items) =>
@@ -50,12 +61,14 @@ export default function Dashboard() {
         // never the full transaction history. The trend/category charts
         // pull their own slices (a monthly aggregation, and a wider-but-still-
         // capped page for category totals) alongside that.
-        const [userRes, txRes, trendRes, categoryRes, categoryBudgetsRes] = await Promise.all([
+        const [userRes, txRes, trendRes, categoryRes, categoryBudgetsRes, insightsRes, accountsRes] = await Promise.all([
           axiosInstance.get("/api/userdata"),
           axiosInstance.get("/api/transactions/recent", { params: { limit: 5 } }),
           axiosInstance.get("/api/transactions/monthly-trend"),
           axiosInstance.get("/api/transactions", { params: { page: 1, limit: 100 } }),
           axiosInstance.get("/api/category-budgets"),
+          axiosInstance.get("/api/transactions/insights"),
+          axiosInstance.get("/api/accounts"),
         ]);
 
         setUserData(userRes.data);
@@ -65,6 +78,8 @@ export default function Dashboard() {
         setCategoryBudgets(
           categoryBudgetsRes.data.reduce((acc, b) => ({ ...acc, [b.category]: b.limit }), {})
         );
+        setForecast(insightsRes.data.forecast);
+        setAccounts(accountsRes.data);
 
       } catch (err) {
         console.error("Dashboard fetch error:", err.response || err.message);
@@ -97,8 +112,12 @@ export default function Dashboard() {
   // pagination) is the place to browse full history.
   const recentTransactionsPreview = transactions.slice(0, 2);
   const monthlyTarget = userData.monthlyLimit > 0 ? userData.monthlyLimit : (userData.totalDebit || 0);
-  const projectedSpend = monthlyTarget > 0 ? (userData.totalDebit || 0) * 1.15 : 0;
+  const projectedSpend = forecast?.projectedSpend ?? (userData.totalDebit || 0);
   const isOverspendingRisk = projectedSpend > monthlyTarget && monthlyTarget > 0;
+  const forecastLabel =
+    forecast?.method === "trend"
+      ? "Trend-based forecast"
+      : "Estimate based on this month's pace so far";
 
   if (authLoading || isLoading) {
     return (
@@ -256,6 +275,33 @@ export default function Dashboard() {
             </div>
           </div>
 
+          {accounts.length > 0 && (
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden mt-8">
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Accounts</h3>
+                <Link to="/accounts" className="text-sm text-blue-600 dark:text-blue-400 font-semibold hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1">
+                  Manage <ArrowRight size={16} />
+                </Link>
+              </div>
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {accounts.map((account) => (
+                  <div key={account._id} className="p-5 flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-slate-800 dark:text-slate-100">{account.name}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        {ACCOUNT_TYPE_LABELS[account.type] || "Other"}
+                        {account.isDefault ? " • Default" : ""}
+                      </p>
+                    </div>
+                    <span className={`font-bold whitespace-nowrap ${(account.balance || 0) < 0 ? "text-red-600 dark:text-red-400" : "text-slate-800 dark:text-slate-100"}`}>
+                      {formatCurrency(account.balance)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
             <SpendingTrendChart data={monthlyTrend} formatCurrency={formatCurrency} />
             <CategoryBreakdownChart categoryTotals={categoryTotals} categoryBudgets={categoryBudgets} formatCurrency={formatCurrency} />
@@ -272,6 +318,9 @@ export default function Dashboard() {
               </p>
               <p className={`text-sm mt-2 ${isOverspendingRisk ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>
                 Projected spend is {formatCurrency(projectedSpend)} vs target {formatCurrency(monthlyTarget)}.
+              </p>
+              <p className={`text-xs mt-1 ${isOverspendingRisk ? "text-red-500 dark:text-red-400/80" : "text-emerald-500 dark:text-emerald-400/80"}`}>
+                {forecastLabel}
               </p>
             </div>
           </div>
