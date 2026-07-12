@@ -25,9 +25,10 @@ export default function Signup() {
         password,
       });
 
-      // Usually axios throws on 4xx/5xx, but checking response data just in case
+      // Registration only creates an unverified account — the signup flow
+      // isn't complete until the emailed code is confirmed on /verify-otp.
       if (res.status === 200 || res.status === 201) {
-        navigate("/login");
+        navigate("/verify-otp", { state: { email: res.data.email || email.trim().toLowerCase() } });
       }
     } catch (err) {
       console.error("Signup Error:", err);

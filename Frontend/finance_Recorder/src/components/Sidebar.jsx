@@ -13,6 +13,7 @@ import {
   PiggyBank,
   BellRing,
   Upload,
+  Wallet,
   X // Import Close icon
 } from "lucide-react";
 
@@ -26,6 +27,7 @@ export default function Sidebar({ isOpen, onClose }) {
     { name: "Dashboard", path: "/dashboard", icon: <LayoutDashboard size={20} /> },
     { name: "Transactions", path: "/transactions", icon: <List size={20} /> },
     { name: "Add Transaction", path: "/add", icon: <PlusCircle size={20} /> },
+    { name: "Accounts", path: "/accounts", icon: <Wallet size={20} /> },
     { name: "Import CSV", path: "/import", icon: <Upload size={20} /> },
     { name: "Monthly History", path: "/previous-months-summary", icon: <History size={20} /> },
     { name: "Recurring", path: "/recurring-transactions", icon: <Repeat size={20} /> },

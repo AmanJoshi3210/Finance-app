@@ -43,8 +43,14 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("token");
   };
 
+  // Merge server-confirmed profile changes (e.g. a rename from Settings) into
+  // the cached user so the Navbar/Profile reflect them without a re-verify.
+  const updateUser = (fields) => {
+    setUser((prev) => (prev ? { ...prev, ...fields } : prev));
+  };
+
   return (
-    <AuthContext.Provider value={{ token, user, loading, login, logout }}>
+    <AuthContext.Provider value={{ token, user, loading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

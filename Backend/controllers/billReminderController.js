@@ -1,5 +1,8 @@
+import mongoose from "mongoose";
 import BillReminder from "../Models/BillReminder.js";
+import User from "../Models/User.js";
 import { createNotificationOnce } from "../services/notificationService.js";
+import { createTransactionRecord } from "./transactionController.js";
 
 // Rolls a recurring reminder's dueDate forward by whole months until it's in
 // the future — same lazy self-healing convention as the monthly summary job,
@@ -128,6 +131,13 @@ export const runBillReminderChecks = async () => {
   const reminders = await BillReminder.find({});
   let notifiedCount = 0;
 
+  // Batch-fetch emails once instead of a per-reminder lookup — bills are
+  // user-opted-in by having created the reminder, so unlike budget/unusual-
+  // activity alerts this fires unconditionally with no preference gate.
+  const userIds = [...new Set(reminders.map((r) => String(r.userId)))];
+  const users = await User.find({ _id: { $in: userIds } }).select("email");
+  const emailByUserId = new Map(users.map((u) => [String(u._id), u.email]));
+
   for (const reminder of reminders) {
     if (rollForwardIfPast(reminder, now)) {
       await reminder.save();
@@ -142,12 +152,75 @@ export const runBillReminderChecks = async () => {
       type: "bill_reminder",
       message: `"${reminder.name}" (₹${reminder.amount}) is due on ${dueDateKey}.`,
       dedupeKey: `bill:${reminder._id}:${dueDateKey}`,
+      userEmail: emailByUserId.get(String(reminder.userId)),
+      subject: "Bill reminder",
     });
 
     if (created) notifiedCount++;
   }
 
   return notifiedCount;
+};
+
+// ✅ Mark a bill as paid: records the payment as a debit transaction through
+// the same path as a manual add (so UserData totals and budget notifications
+// stay consistent), then advances a recurring bill to its next due date or
+// removes a one-time bill entirely.
+export const payBillReminder = async (req, res) => {
+  const session = await mongoose.startSession();
+  try {
+    const userId = req.user.userId;
+    const { id } = req.params;
+
+    let result;
+    let notFound = false;
+
+    await session.withTransaction(async () => {
+      const reminder = await BillReminder.findOne({ _id: id, userId }).session(session);
+
+      if (!reminder) {
+        notFound = true;
+        return;
+      }
+
+      let transaction = null;
+      if (reminder.amount > 0) {
+        transaction = await createTransactionRecord(
+          userId,
+          {
+            type: "debit",
+            method: "Other",
+            category: "Bills",
+            amount: reminder.amount,
+            description: `Paid bill: ${reminder.name}`,
+          },
+          session
+        );
+      }
+
+      if (reminder.recurring) {
+        const nextDue = new Date(reminder.dueDate);
+        nextDue.setMonth(nextDue.getMonth() + 1);
+        reminder.dueDate = nextDue;
+        await reminder.save({ session });
+        result = { transaction, reminder };
+      } else {
+        await reminder.deleteOne({ session });
+        result = { transaction, reminder: null };
+      }
+    });
+
+    if (notFound) {
+      return res.status(404).json({ message: "Bill reminder not found" });
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error("Pay Bill Reminder Error:", error);
+    res.status(500).json({ message: error.message });
+  } finally {
+    await session.endSession();
+  }
 };
 
 // 🗑️ Delete a bill reminder

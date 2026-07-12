@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import axiosInstance from "../api/axiosInstance";
+import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
@@ -15,11 +16,11 @@ import {
   Bell,
   User,
   Mail,
-  Smartphone,
   Lock,
   Eye,
   Trash2,
   Tag,
+  KeyRound,
 } from "lucide-react";
 
 const SETTINGS_KEY = "finance_app_settings";
@@ -37,11 +38,17 @@ export default function Settings() {
   const [categories, setCategories] = useState([]);
   const [categoryLimits, setCategoryLimits] = useState({}); // { [category]: { value, budgetId, saving } }
 
-  const [profile, setProfile] = useState({
-    fullName: "",
-    email: "",
-    phone: "",
+  const { user, updateUser } = useAuth();
+
+  const [fullName, setFullName] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
+  const [changingPassword, setChangingPassword] = useState(false);
 
   const [notifications, setNotifications] = useState({
     budgetAlerts: true,
@@ -56,6 +63,11 @@ export default function Settings() {
   });
 
   const navigate = useNavigate();
+
+  // Seed the profile form from the verified user once auth resolves.
+  useEffect(() => {
+    if (user?.name) setFullName(user.name);
+  }, [user]);
 
   // ✅ State for Mobile Sidebar
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -86,7 +98,6 @@ export default function Settings() {
 
         if (localSettings) {
           const parsed = JSON.parse(localSettings);
-          if (parsed.profile) setProfile(parsed.profile);
           if (parsed.security) setSecurity(parsed.security);
         }
       } catch (error) {
@@ -181,14 +192,65 @@ export default function Settings() {
     }
   };
 
-  const handleSaveProfile = () => {
-    if (!profile.fullName || !profile.email) {
-      showToast("Name and email are required for profile.", "warning");
+  const handleSaveProfile = async () => {
+    if (!fullName.trim()) {
+      showToast("Name is required.", "warning");
       return;
     }
 
-    persistLocalSettings({ profile, security });
-    showToast("Profile preferences saved.");
+    setSavingProfile(true);
+    try {
+      const res = await axiosInstance.put("/api/users/profile", { name: fullName });
+      updateUser({ name: res.data.name });
+      showToast("Profile updated.");
+    } catch (error) {
+      if (error.response?.status === 401) navigate("/login");
+      console.error("Error updating profile:", error);
+      showToast(error.response?.data?.message || "Could not update profile.", "error");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    const { currentPassword, newPassword, confirmPassword } = passwordForm;
+
+    if (!currentPassword || !newPassword) {
+      showToast("Please fill in both password fields.", "warning");
+      return;
+    }
+    if (newPassword.length < 6) {
+      showToast("New password must be at least 6 characters.", "warning");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      showToast("New passwords do not match.", "warning");
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      await axiosInstance.put("/api/users/change-password", { currentPassword, newPassword });
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+
+      const updatedSecurity = {
+        ...security,
+        lastPasswordChange: new Date().toLocaleDateString("en-IN", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        }),
+      };
+      setSecurity(updatedSecurity);
+      persistLocalSettings({ security: updatedSecurity });
+
+      showToast("Password changed successfully.");
+    } catch (error) {
+      console.error("Error changing password:", error);
+      showToast(error.response?.data?.message || "Could not change password.", "error");
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
   const handleSaveNotifications = async () => {
@@ -207,17 +269,7 @@ export default function Settings() {
   };
 
   const handleSaveSecurity = () => {
-    const updatedSecurity = {
-      ...security,
-      lastPasswordChange: new Date().toLocaleDateString("en-IN", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      }),
-    };
-
-    setSecurity(updatedSecurity);
-    persistLocalSettings({ profile, security: updatedSecurity });
+    persistLocalSettings({ security });
     showToast("Security preferences updated.");
   };
 
@@ -433,8 +485,8 @@ export default function Settings() {
                       <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Full Name</label>
                       <input
                         type="text"
-                        value={profile.fullName}
-                        onChange={(e) => setProfile((prev) => ({ ...prev, fullName: e.target.value }))}
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
                         placeholder="Enter your full name"
                         className="mt-2 w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
                       />
@@ -446,34 +498,25 @@ export default function Settings() {
                         <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
                           type="email"
-                          value={profile.email}
-                          onChange={(e) => setProfile((prev) => ({ ...prev, email: e.target.value }))}
-                          placeholder="name@example.com"
-                          className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
+                          value={user?.email || ""}
+                          readOnly
+                          disabled
+                          className="w-full pl-10 pr-4 py-3 bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl outline-none text-slate-500 dark:text-slate-400 cursor-not-allowed"
                         />
                       </div>
-                    </div>
-
-                    <div>
-                      <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Phone</label>
-                      <div className="mt-2 relative">
-                        <Smartphone size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input
-                          type="tel"
-                          value={profile.phone}
-                          onChange={(e) => setProfile((prev) => ({ ...prev, phone: e.target.value }))}
-                          placeholder="+91 98xxxxxx"
-                          className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"
-                        />
-                      </div>
+                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">
+                        Email is your login identity and can't be changed here.
+                      </p>
                     </div>
 
                     <div className="pt-4 flex justify-end">
                       <button
                         onClick={handleSaveProfile}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl"
+                        disabled={savingProfile}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl disabled:opacity-70 disabled:cursor-not-allowed"
                       >
-                        <Save size={16} /> Save Profile
+                        {savingProfile ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                        Save Profile
                       </button>
                     </div>
                   </div>

@@ -2,6 +2,7 @@ import express from "express";
 import { runMonthlySnapshot } from "../controllers/monthlySnapshotController.js";
 import { runDueRecurringTransactions } from "../controllers/recurringTransactionController.js";
 import { runBillReminderChecks } from "../controllers/billReminderController.js";
+import { runWeeklySummaryEmails } from "../controllers/weeklySummaryController.js";
 
 const router = express.Router();
 
@@ -51,6 +52,24 @@ router.get("/bill-reminders", async (req, res) => {
     res.json({ message: "Bill reminder check complete", count });
   } catch (error) {
     console.error("Bill Reminder Cron Error:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Intended to be triggered weekly (e.g. Monday mornings) by the same
+// external scheduler that hits the routes above.
+router.get("/weekly-summary", async (req, res) => {
+  try {
+    const secret = req.headers["x-cron-secret"];
+
+    if (!process.env.CRON_SECRET || secret !== process.env.CRON_SECRET) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const count = await runWeeklySummaryEmails();
+    res.json({ message: "Weekly summary emails sent", count });
+  } catch (error) {
+    console.error("Weekly Summary Cron Error:", error);
     res.status(500).json({ message: error.message });
   }
 });

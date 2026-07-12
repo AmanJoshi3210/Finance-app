@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Notification from "../Models/Notification.js";
 import Transaction from "../Models/Transactions.js";
 import CategoryBudget from "../Models/CategoryBudget.js";
+import { sendEmail } from "./emailService.js";
 
 // Check 100% before 90% so only the strongest applicable threshold notifies.
 const THRESHOLDS = [1, 0.9];
@@ -11,14 +12,27 @@ const monthKey = (date) => new Date(date).toISOString().slice(0, 7);
 // Creates a notification for a given (userId, dedupeKey) condition exactly
 // once — a later call for the same condition is a silent no-op instead of a
 // duplicate row. Returns true if a new notification was actually inserted.
-export const createNotificationOnce = async ({ userId, type, message, dedupeKey, session }) => {
+//
+// Optional userEmail/subject email the same message on a first-time create.
+// This is deliberately fire-and-forget (not awaited) rather than returned as
+// a promise the caller awaits: callers that run inside session.withTransaction
+// can have this whole function retried on a write conflict, and an awaited
+// send here would risk emailing twice for one logical event even though the
+// dedupe key keeps the DB itself consistent.
+export const createNotificationOnce = async ({ userId, type, message, dedupeKey, session, userEmail, subject }) => {
   try {
     const result = await Notification.findOneAndUpdate(
       { userId, dedupeKey },
       { $setOnInsert: { userId, type, message, dedupeKey, read: false, createdAt: new Date() } },
       { upsert: true, session, setDefaultsOnInsert: true, includeResultMetadata: true }
     );
-    return Boolean(result.lastErrorObject?.upserted);
+    const created = Boolean(result.lastErrorObject?.upserted);
+
+    if (created && userEmail) {
+      sendEmail({ to: userEmail, subject: subject || "Finance Recorder Alert", text: message });
+    }
+
+    return created;
   } catch (error) {
     if (error.code === 11000) return false; // raced another request creating the same alert
     throw error;
@@ -26,7 +40,7 @@ export const createNotificationOnce = async ({ userId, type, message, dedupeKey,
 };
 
 // Overall monthly-limit check, fired once per threshold crossing per month.
-export const checkOverallBudget = async ({ userId, newDebit, monthlyLimit, date, session }) => {
+export const checkOverallBudget = async ({ userId, newDebit, monthlyLimit, date, session, userEmail }) => {
   if (!monthlyLimit || monthlyLimit <= 0) return;
 
   const month = monthKey(date);
@@ -40,6 +54,8 @@ export const checkOverallBudget = async ({ userId, newDebit, monthlyLimit, date,
         message: `You have ${label} your monthly budget of ₹${monthlyLimit}.`,
         dedupeKey: `budget:overall:${month}:${threshold * 100}`,
         session,
+        userEmail,
+        subject: "Budget alert",
       });
       return;
     }
@@ -49,7 +65,7 @@ export const checkOverallBudget = async ({ userId, newDebit, monthlyLimit, date,
 // Per-category budget check. There's no running counter for category spend,
 // so this recomputes the category's month-to-date debit total from the
 // ledger itself before comparing it against the CategoryBudget limit.
-export const checkCategoryBudget = async ({ userId, category, date, session }) => {
+export const checkCategoryBudget = async ({ userId, category, date, session, userEmail }) => {
   const month = monthKey(date);
   const budget = await CategoryBudget.findOne({ userId, category, month }).session(session);
   if (!budget || budget.limit <= 0) return;
@@ -81,6 +97,8 @@ export const checkCategoryBudget = async ({ userId, category, date, session }) =
         message: `You have ${label} your "${category}" budget of ₹${budget.limit}.`,
         dedupeKey: `budget:category:${category}:${month}:${threshold * 100}`,
         session,
+        userEmail,
+        subject: "Category budget alert",
       });
       return;
     }
@@ -90,7 +108,7 @@ export const checkCategoryBudget = async ({ userId, category, date, session }) =
 // Heuristic (not ML): flag a debit/withdrawal whose amount is more than 2x
 // the trailing-30-day average for that category. Requires a little history
 // first so a category's first couple of transactions never trivially "spike".
-export const checkUnusualActivity = async ({ userId, transaction, session }) => {
+export const checkUnusualActivity = async ({ userId, transaction, session, userEmail }) => {
   if (transaction.type !== "debit" && transaction.type !== "withdrawal") return;
 
   const windowStart = new Date(transaction.date);
@@ -118,6 +136,8 @@ export const checkUnusualActivity = async ({ userId, transaction, session }) => 
       message: `Unusual spending detected: ₹${transaction.amount} on "${transaction.category}" is more than double your recent average.`,
       dedupeKey: `unusual:${transaction._id}`,
       session,
+      userEmail,
+      subject: "Unusual activity detected",
     });
   }
 };

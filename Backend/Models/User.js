@@ -20,6 +20,18 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
+  otpCode: {
+    type: String,
+    select: false,
+  },
+  otpExpiry: {
+    type: Date,
+    select: false,
+  },
   notificationPreferences: {
     budgetAlerts: { type: Boolean, default: true },
     weeklySummary: { type: Boolean, default: true },

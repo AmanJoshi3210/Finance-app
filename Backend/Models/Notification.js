@@ -4,6 +4,7 @@ const NotificationType = {
   BUDGET_ALERT: "budget_alert",
   UNUSUAL_ACTIVITY: "unusual_activity",
   BILL_REMINDER: "bill_reminder",
+  WEEKLY_SUMMARY: "weekly_summary",
 };
 
 

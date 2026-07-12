@@ -5,6 +5,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import VerifyOtp from "./pages/VerifyOtp";
 import Dashboard from "./pages/Dashboard";
 import Transactions from "./pages/Transactions";
 import AddTransaction from "./pages/AddTransaction";
@@ -15,6 +16,7 @@ import RecurringTransactions from "./pages/RecurringTransactions";
 import ImportTransactions from "./pages/ImportTransactions";
 import SavingsGoals from "./pages/SavingsGoals";
 import BillReminders from "./pages/BillReminders";
+import Accounts from "./pages/Accounts";
 
 function App() {
   return (
@@ -23,6 +25,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/verify-otp" element={<VerifyOtp />} />
 
         <Route
           path="/dashboard"
@@ -101,6 +104,14 @@ function App() {
           element={
             <ProtectedRoute>
               <BillReminders />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/accounts"
+          element={
+            <ProtectedRoute>
+              <Accounts />
             </ProtectedRoute>
           }
         />

@@ -1,10 +1,13 @@
 import UserData from "../Models/UserData.js";
 import MonthlySummary from "../Models/MonthlySummary.js";
 
-// "YYYY-MM" for the calendar month before `date` (the month that just ended)
+// "YYYY-MM" for the calendar month before `date` (the month that just ended).
+// Formatted from local date parts — toISOString() converts to UTC first, which
+// mislabels the month on any server ahead of UTC (e.g. IST) since local
+// "1st of month 00:00" is still the previous month in UTC.
 export const getPreviousMonthString = (date = new Date()) => {
   const d = new Date(date.getFullYear(), date.getMonth() - 1, 1);
-  return d.toISOString().slice(0, 7);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 };
 
 // Snapshots every user's current totals into MonthlySummary under `month`,
@@ -30,6 +33,10 @@ export const runMonthlySnapshot = async (month = getPreviousMonthString()) => {
       monthlyLimit: userData.monthlyLimit,
     });
 
+    // Only UserData's monthly totals reset here. Account.balance is a true
+    // cumulative running balance (not a monthly counter) and must never be
+    // zeroed by this job — see applyAccountBalanceDelta in
+    // transactionController.js.
     userData.totalCredit = 0;
     userData.totalDebit = 0;
     userData.updatedAt = Date.now();

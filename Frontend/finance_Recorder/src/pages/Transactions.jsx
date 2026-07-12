@@ -20,6 +20,8 @@ import {
   Trash2,
   Download,
   Upload,
+  Tag,
+  ChevronDown,
 } from "lucide-react";
 
 const PAGE_SIZE = 5;
@@ -30,6 +32,11 @@ export default function Transactions() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [availableTags, setAvailableTags] = useState([]);
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [tagMenuOpen, setTagMenuOpen] = useState(false);
+  const [accounts, setAccounts] = useState([]);
+  const [accountFilter, setAccountFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -37,6 +44,7 @@ export default function Transactions() {
   const [deletingId, setDeletingId] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [exportingXlsx, setExportingXlsx] = useState(false);
 
   // ✅ State for Mobile Sidebar
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -52,7 +60,27 @@ export default function Transactions() {
   // Filters changed → the current page of results is no longer valid, restart at page 1
   useEffect(() => {
     setPage(1);
-  }, [debouncedQuery, typeFilter]);
+  }, [debouncedQuery, typeFilter, selectedTags, accountFilter]);
+
+  // Populate the tag-filter checklist from tags actually in use.
+  useEffect(() => {
+    axiosInstance
+      .get("/api/transactions/tags")
+      .then((res) => setAvailableTags(res.data))
+      .catch((error) => console.error("Failed to load tags:", error));
+  }, []);
+
+  // Populate the account filter.
+  useEffect(() => {
+    axiosInstance
+      .get("/api/accounts")
+      .then((res) => setAccounts(res.data))
+      .catch((error) => console.error("Failed to load accounts:", error));
+  }, []);
+
+  const toggleTagFilter = (tag) => {
+    setSelectedTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
+  };
 
   const fetchTransactions = useCallback(
     async (targetPage) => {
@@ -64,6 +92,8 @@ export default function Transactions() {
             limit: PAGE_SIZE,
             type: typeFilter === "all" ? undefined : typeFilter,
             search: debouncedQuery || undefined,
+            tags: selectedTags.length > 0 ? selectedTags.join(",") : undefined,
+            accountId: accountFilter === "all" ? undefined : accountFilter,
           },
         });
 
@@ -81,7 +111,7 @@ export default function Transactions() {
         setLoading(false);
       }
     },
-    [navigate, typeFilter, debouncedQuery]
+    [navigate, typeFilter, debouncedQuery, selectedTags, accountFilter]
   );
 
   useEffect(() => {
@@ -155,6 +185,8 @@ export default function Transactions() {
         params: {
           type: typeFilter === "all" ? undefined : typeFilter,
           search: debouncedQuery || undefined,
+          tags: selectedTags.length > 0 ? selectedTags.join(",") : undefined,
+          accountId: accountFilter === "all" ? undefined : accountFilter,
         },
         responseType: "blob",
       });
@@ -176,6 +208,40 @@ export default function Transactions() {
       }
     } finally {
       setExporting(false);
+    }
+  };
+
+  // Same blob-download pattern as the CSV export, pointed at the xlsx endpoint.
+  const handleExportXlsx = async () => {
+    setExportingXlsx(true);
+    try {
+      const res = await axiosInstance.get("/api/transactions/export/xlsx", {
+        params: {
+          type: typeFilter === "all" ? undefined : typeFilter,
+          search: debouncedQuery || undefined,
+          tags: selectedTags.length > 0 ? selectedTags.join(",") : undefined,
+          accountId: accountFilter === "all" ? undefined : accountFilter,
+        },
+        responseType: "blob",
+      });
+
+      const url = URL.createObjectURL(res.data);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `transactions-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error(error);
+      if (error.response?.status === 401) {
+        navigate("/login");
+      } else {
+        alert("Could not export transactions. Please try again.");
+      }
+    } finally {
+      setExportingXlsx(false);
     }
   };
 
@@ -219,6 +285,16 @@ export default function Transactions() {
                 Export CSV
               </button>
 
+              <button
+                type="button"
+                onClick={handleExportXlsx}
+                disabled={exportingXlsx}
+                className="inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shadow-sm disabled:opacity-50"
+              >
+                {exportingXlsx ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+                Export Excel
+              </button>
+
               <Link
                 to="/import"
                 className="inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 hover:text-blue-600 dark:hover:text-blue-400 transition-colors shadow-sm"
@@ -254,6 +330,60 @@ export default function Transactions() {
                   <option value="withdrawal">Withdrawal</option>
                 </select>
               </div>
+
+              {accounts.length > 0 && (
+                <div className="relative">
+                  <Wallet size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <select
+                    value={accountFilter}
+                    onChange={(e) => setAccountFilter(e.target.value)}
+                    className="appearance-none pl-9 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
+                  >
+                    <option value="all">All accounts</option>
+                    {accounts.map((account) => (
+                      <option key={account._id} value={account._id}>
+                        {account.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {availableTags.length > 0 && (
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setTagMenuOpen((prev) => !prev)}
+                    className="inline-flex items-center gap-2 px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors shadow-sm"
+                  >
+                    <Tag size={16} className="text-slate-400" />
+                    Tags{selectedTags.length > 0 ? ` (${selectedTags.length})` : ""}
+                    <ChevronDown size={14} className="text-slate-400" />
+                  </button>
+
+                  {tagMenuOpen && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setTagMenuOpen(false)} />
+                      <div className="absolute right-0 mt-2 w-56 max-h-64 overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-20 p-2">
+                        {availableTags.map((tag) => (
+                          <label
+                            key={tag}
+                            className="flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-sm text-slate-700 dark:text-slate-200"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedTags.includes(tag)}
+                              onChange={() => toggleTagFilter(tag)}
+                              className="rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+                            />
+                            {tag}
+                          </label>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -301,6 +431,18 @@ export default function Transactions() {
                             <span className="hidden sm:inline">•</span>
                             <span className="line-clamp-1">{t.description || "No description provided"}</span>
                           </div>
+                          {(t.tags || []).length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                              {(t.tags || []).map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-300 text-xs font-medium border border-blue-100 dark:border-blue-900"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
 
