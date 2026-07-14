@@ -12,11 +12,22 @@ const OTP_EXPIRY_MINUTES = 10;
 const generateOtp = () => crypto.randomInt(100000, 1000000).toString();
 
 const sendOtpEmail = async (email, otp) => {
+  console.log(`[TEMP DEBUG OTP] ${email}: ${otp}`);
   await sendEmail({
     to: email,
     subject: "Your FinTrack verification code",
     text: `Your verification code is ${otp}. It expires in ${OTP_EXPIRY_MINUTES} minutes.`,
     html: `<p>Your verification code is <strong>${otp}</strong>.</p><p>It expires in ${OTP_EXPIRY_MINUTES} minutes.</p>`,
+  });
+};
+
+const sendPasswordResetOtpEmail = async (email, otp) => {
+  console.log(`[TEMP DEBUG OTP] ${email}: ${otp}`);
+  await sendEmail({
+    to: email,
+    subject: "Your FinTrack password reset code",
+    text: `Your password reset code is ${otp}. It expires in ${OTP_EXPIRY_MINUTES} minutes. If you didn't request this, you can safely ignore this email.`,
+    html: `<p>Your password reset code is <strong>${otp}</strong>.</p><p>It expires in ${OTP_EXPIRY_MINUTES} minutes.</p><p>If you didn't request this, you can safely ignore this email.</p>`,
   });
 };
 
@@ -293,6 +304,75 @@ router.post("/login", async (req, res) => {
     res.json({ token, userId: user._id, name: user.name });
   } catch (err) {
     console.error("Login error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// FORGOT PASSWORD — emails a one-time code for resetting the password.
+// Always responds with the same generic message so this endpoint can't be
+// used to discover which emails have accounts.
+router.post("/forgot-password", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email is required" });
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const genericResponse = {
+      message: "If an account with that email exists, a password reset code has been sent.",
+    };
+
+    const user = await User.findOne({ email: normalizedEmail });
+    if (!user) return res.json(genericResponse);
+
+    const otp = generateOtp();
+    user.resetOtpCode = await bcrypt.hash(otp, 10);
+    user.resetOtpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+    await user.save();
+
+    await sendPasswordResetOtpEmail(normalizedEmail, otp);
+
+    res.json(genericResponse);
+  } catch (err) {
+    console.error("Forgot password error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// RESET PASSWORD — verifies the emailed code and sets a new password in a
+// single step.
+router.post("/reset-password", async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ message: "Email, code and new password are required" });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "New password must be at least 6 characters" });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail }).select(
+      "+resetOtpCode +resetOtpExpiry"
+    );
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (!user.resetOtpCode || !user.resetOtpExpiry || user.resetOtpExpiry < new Date()) {
+      return res.status(400).json({ message: "Code expired. Please request a new one." });
+    }
+
+    const isMatch = await bcrypt.compare(otp, user.resetOtpCode);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid reset code" });
+    }
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.resetOtpCode = undefined;
+    user.resetOtpExpiry = undefined;
+    await user.save();
+
+    res.json({ message: "Password reset successfully" });
+  } catch (err) {
+    console.error("Reset password error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });
