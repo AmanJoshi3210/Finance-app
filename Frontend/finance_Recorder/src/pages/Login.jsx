@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import axiosInstance from "../api/axiosInstance";
-import { Mail, Lock, Loader2, LogIn, AlertCircle } from "lucide-react";
+import { Mail, Lock, Loader2, LogIn, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false); // ✅ Added loading state
-  
+
+  const location = useLocation();
+  const [info, setInfo] = useState(location.state?.message || "");
   const { login, token } = useAuth();
   const navigate = useNavigate();
 
@@ -23,6 +25,7 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setInfo("");
     setIsLoading(true); // Start loading
 
     try {
@@ -71,6 +74,14 @@ export default function Login() {
           <p className="text-slate-500 mt-2">Enter your credentials to access FinTrack</p>
         </div>
 
+        {/* Info Alert */}
+        {info && !error && (
+          <div className="flex items-center gap-3 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6 text-sm">
+            <CheckCircle2 size={18} className="shrink-0" />
+            <p>{info}</p>
+          </div>
+        )}
+
         {/* Error Alert */}
         {error && (
           <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm">
@@ -108,9 +119,9 @@ export default function Login() {
               <label className="block text-sm font-medium text-slate-700" htmlFor="password">
                 Password
               </label>
-              <a href="#" className="text-xs font-semibold text-blue-600 hover:text-blue-700">
+              <Link to="/forgot-password" className="text-xs font-semibold text-blue-600 hover:text-blue-700">
                 Forgot Password?
-              </a>
+              </Link>
             </div>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
