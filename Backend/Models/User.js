@@ -32,14 +32,6 @@ const userSchema = new mongoose.Schema({
     type: Date,
     select: false,
   },
-  resetOtpCode: {
-    type: String,
-    select: false,
-  },
-  resetOtpExpiry: {
-    type: Date,
-    select: false,
-  },
   notificationPreferences: {
     budgetAlerts: { type: Boolean, default: true },
     weeklySummary: { type: Boolean, default: true },

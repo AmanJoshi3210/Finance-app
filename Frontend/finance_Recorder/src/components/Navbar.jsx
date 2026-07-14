@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Menu, User, HelpCircle, Bell, BadgeIndianRupee, AlertTriangle, CalendarClock, Sun, Moon, LogOut } from "lucide-react";
+import { Menu, User, HelpCircle, Bell, BadgeIndianRupee, AlertTriangle, CalendarClock, Sun, Moon } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import axiosInstance from "../api/axiosInstance";
@@ -23,7 +23,7 @@ const formatRelativeTime = (isoDate) => {
 };
 
 export default function Navbar({ title, onMenuClick }) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -185,20 +185,6 @@ export default function Navbar({ title, onMenuClick }) {
                 <HelpCircle size={16} />
                 Help & Support
               </a>
-
-              <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
-
-              <button
-                onClick={() => {
-                  setIsMenuOpen(false);
-                  logout();
-                  navigate("/login", { replace: true });
-                }}
-                className="w-full flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
-              >
-                <LogOut size={16} />
-                Logout
-              </button>
             </div>
           )}
         </div>
