@@ -90,6 +90,38 @@ router.put("/notification-preferences", authMiddleware, async (req, res) => {
   }
 });
 
+// Security preferences (currently just the login-2FA toggle). Stored per-user
+// in the DB so it follows the account across devices, unlike the cosmetic
+// session-timeout/last-password-change bits the client keeps in localStorage.
+router.get("/security-preferences", authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).select("twoFactorEnabled");
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({ twoFactorEnabled: Boolean(user.twoFactorEnabled) });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.put("/security-preferences", authMiddleware, async (req, res) => {
+  try {
+    const { twoFactorEnabled } = req.body;
+
+    const user = await User.findByIdAndUpdate(
+      req.user.userId,
+      { $set: { twoFactorEnabled: Boolean(twoFactorEnabled) } },
+      { new: true, select: "twoFactorEnabled" }
+    );
+
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    res.json({ twoFactorEnabled: Boolean(user.twoFactorEnabled) });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // Update the signed-in user's profile. Email is deliberately not editable —
 // it's the login identity and unique key.
 router.put("/profile", authMiddleware, async (req, res) => {
@@ -297,6 +329,20 @@ router.post("/login", async (req, res) => {
       });
     }
 
+    // Per-user login 2FA: don't hand out a token yet — email a one-time code
+    // and let /verify-login-otp complete the login. Users who haven't enabled
+    // it in Settings fall straight through to the token below (unchanged).
+    if (user.twoFactorEnabled) {
+      const otp = generateOtp();
+      user.otpCode = await bcrypt.hash(otp, 10);
+      user.otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+      await user.save();
+
+      await sendOtpEmail(user.email, otp);
+
+      return res.json({ twoFactorRequired: true, email: user.email });
+    }
+
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1d",
     });
@@ -304,6 +350,77 @@ router.post("/login", async (req, res) => {
     res.json({ token, userId: user._id, name: user.name });
   } catch (err) {
     console.error("Login error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// VERIFY LOGIN OTP — the second factor for users with 2FA enabled. The code was
+// issued by /login only after a correct password, so confirming it (proof of
+// inbox access) is what completes the login. isVerified is left untouched — this
+// is a returning verified user, not signup.
+router.post("/verify-login-otp", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email and code are required" });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail }).select("+otpCode +otpExpiry");
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (!user.twoFactorEnabled) {
+      return res.status(400).json({ message: "Two-factor authentication is not enabled" });
+    }
+
+    if (!user.otpCode || !user.otpExpiry || user.otpExpiry < new Date()) {
+      return res.status(400).json({ message: "Code expired. Please request a new one." });
+    }
+
+    const isMatch = await bcrypt.compare(otp, user.otpCode);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid verification code" });
+    }
+
+    user.otpCode = undefined;
+    user.otpExpiry = undefined;
+    await user.save();
+
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
+
+    res.json({ token, userId: user._id, name: user.name });
+  } catch (err) {
+    console.error("Login OTP verify error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// RESEND LOGIN OTP — reissues the second-factor code for a 2FA user.
+router.post("/resend-login-otp", async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ message: "Email is required" });
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (!user.twoFactorEnabled) {
+      return res.status(400).json({ message: "Two-factor authentication is not enabled" });
+    }
+
+    const otp = generateOtp();
+    user.otpCode = await bcrypt.hash(otp, 10);
+    user.otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+    await user.save();
+
+    await sendOtpEmail(normalizedEmail, otp);
+
+    res.json({ message: "Verification code resent" });
+  } catch (err) {
+    console.error("Login OTP resend error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });

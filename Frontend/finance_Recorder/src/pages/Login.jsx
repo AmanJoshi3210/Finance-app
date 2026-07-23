@@ -35,6 +35,20 @@ export default function Login() {
       });
 
       const data = res.data;
+
+      // 2FA enabled: no token yet — a code was emailed. Finish on the OTP
+      // screen in "login" mode (verifies against /verify-login-otp).
+      if (data.twoFactorRequired) {
+        navigate("/verify-otp", {
+          state: {
+            email: data.email || email.trim(),
+            mode: "login",
+            message: "Enter the code we sent to finish signing in.",
+          },
+        });
+        return;
+      }
+
       login(data.token);
       navigate("/dashboard", { replace: true });
     } catch (err) {

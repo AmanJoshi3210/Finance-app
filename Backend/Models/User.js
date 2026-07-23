@@ -24,6 +24,12 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  // Per-user login 2FA. When true, /login won't return a token directly —
+  // it emails a one-time code that must be confirmed via /verify-login-otp.
+  twoFactorEnabled: {
+    type: Boolean,
+    default: false,
+  },
   otpCode: {
     type: String,
     select: false,
