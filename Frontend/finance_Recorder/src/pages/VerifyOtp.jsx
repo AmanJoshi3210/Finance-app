@@ -13,6 +13,10 @@ export default function VerifyOtp() {
   const { login } = useAuth();
 
   const email = location.state?.email;
+  // "signup" (default) verifies a brand-new account; "login" is the second
+  // factor for a returning user who enabled 2FA. They hit different endpoints.
+  const mode = location.state?.mode || "signup";
+  const isLogin = mode === "login";
 
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
@@ -22,12 +26,12 @@ export default function VerifyOtp() {
   const [cooldown, setCooldown] = useState(0);
 
   // Signup/Login always route here with the email to verify. Without it
-  // there's nothing to check the code against, so bounce back to signup.
+  // there's nothing to check the code against, so bounce back where they came.
   useEffect(() => {
     if (!email) {
-      navigate("/signup", { replace: true });
+      navigate(isLogin ? "/login" : "/signup", { replace: true });
     }
-  }, [email, navigate]);
+  }, [email, isLogin, navigate]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -44,10 +48,10 @@ export default function VerifyOtp() {
     setIsLoading(true);
 
     try {
-      const res = await axiosInstance.post("/api/users/verify-otp", {
-        email,
-        otp: otp.trim(),
-      });
+      const res = await axiosInstance.post(
+        isLogin ? "/api/users/verify-login-otp" : "/api/users/verify-otp",
+        { email, otp: otp.trim() }
+      );
 
       login(res.data.token);
       navigate("/dashboard", { replace: true });
@@ -64,7 +68,10 @@ export default function VerifyOtp() {
     setIsResending(true);
 
     try {
-      await axiosInstance.post("/api/users/resend-otp", { email });
+      await axiosInstance.post(
+        isLogin ? "/api/users/resend-login-otp" : "/api/users/resend-otp",
+        { email }
+      );
       setInfo("A new code has been sent to your email.");
       setCooldown(RESEND_COOLDOWN_SECONDS);
     } catch (err) {
@@ -85,7 +92,9 @@ export default function VerifyOtp() {
           <div className="inline-flex items-center justify-center w-12 h-12 bg-blue-100 text-blue-600 rounded-xl mb-4">
             <ShieldCheck size={24} />
           </div>
-          <h2 className="text-3xl font-bold text-slate-800">Verify Your Email</h2>
+          <h2 className="text-3xl font-bold text-slate-800">
+            {isLogin ? "Two-Step Verification" : "Verify Your Email"}
+          </h2>
           <p className="text-slate-500 mt-2">
             Enter the 6-digit code we sent to <span className="font-semibold text-slate-700">{email}</span>
           </p>
@@ -158,10 +167,21 @@ export default function VerifyOtp() {
 
         <div className="mt-8 text-center border-t border-slate-100 pt-6">
           <p className="text-sm text-slate-600">
-            Wrong email?{" "}
-            <Link to="/signup" className="text-blue-600 hover:text-blue-700 font-bold hover:underline transition">
-              Sign up again
-            </Link>
+            {isLogin ? (
+              <>
+                Not you?{" "}
+                <Link to="/login" className="text-blue-600 hover:text-blue-700 font-bold hover:underline transition">
+                  Back to login
+                </Link>
+              </>
+            ) : (
+              <>
+                Wrong email?{" "}
+                <Link to="/signup" className="text-blue-600 hover:text-blue-700 font-bold hover:underline transition">
+                  Sign up again
+                </Link>
+              </>
+            )}
           </p>
         </div>
       </div>

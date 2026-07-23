@@ -99,11 +99,12 @@ export default function Settings() {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const [budgetRes, categoriesRes, categoryBudgetsRes, notificationPrefsRes, localSettings] = await Promise.all([
+        const [budgetRes, categoriesRes, categoryBudgetsRes, notificationPrefsRes, securityPrefsRes, localSettings] = await Promise.all([
           axiosInstance.get("/api/transactions/monthly-limit"),
           axiosInstance.get("/api/transactions/categories"),
           axiosInstance.get("/api/category-budgets", { params: { month: currentMonthString() } }),
           axiosInstance.get("/api/users/notification-preferences"),
+          axiosInstance.get("/api/users/security-preferences"),
           Promise.resolve(localStorage.getItem(SETTINGS_KEY)),
         ]);
 
@@ -120,10 +121,14 @@ export default function Settings() {
         setCategoryLimits(limits);
         setNotifications(notificationPrefsRes.data);
 
-        if (localSettings) {
-          const parsed = JSON.parse(localSettings);
-          if (parsed.security) setSecurity(parsed.security);
-        }
+        // twoFactorEnabled is authoritative from the backend (per-user, follows
+        // the account); sessionTimeout/lastPasswordChange stay client-local.
+        const localSecurity = localSettings ? JSON.parse(localSettings).security || {} : {};
+        setSecurity((prev) => ({
+          ...prev,
+          ...localSecurity,
+          twoFactorEnabled: Boolean(securityPrefsRes.data.twoFactorEnabled),
+        }));
       } catch (error) {
         if (error.response?.status === 401) navigate("/login");
         console.error(error);
@@ -292,9 +297,26 @@ export default function Settings() {
     }
   };
 
-  const handleSaveSecurity = () => {
-    persistLocalSettings({ security });
-    showToast("Security preferences updated.");
+  const handleSaveSecurity = async () => {
+    try {
+      // twoFactorEnabled must round-trip to the DB so it actually gates login;
+      // the cosmetic bits (session timeout, last password change) stay local.
+      const res = await axiosInstance.put("/api/users/security-preferences", {
+        twoFactorEnabled: security.twoFactorEnabled,
+      });
+      const nextSecurity = { ...security, twoFactorEnabled: res.data.twoFactorEnabled };
+      setSecurity(nextSecurity);
+      persistLocalSettings({ security: nextSecurity });
+      showToast(
+        res.data.twoFactorEnabled
+          ? "Two-step verification enabled. You'll enter an emailed code at your next login."
+          : "Security preferences updated."
+      );
+    } catch (error) {
+      if (error.response?.status === 401) navigate("/login");
+      console.error("Error saving security preferences:", error);
+      showToast("Could not save security preferences. Please try again.", "error");
+    }
   };
 
   if (loading)
@@ -792,13 +814,15 @@ function SwitchRow({ label, description, checked, onToggle, icon }) {
         aria-checked={checked}
         aria-label={label}
         onClick={onToggle}
-        className={`relative w-12 h-6 shrink-0 rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${
+        className={`relative inline-flex items-center w-12 h-6 shrink-0 rounded-full px-0.5 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${
           checked ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-600"
         }`}
       >
+        {/* Handle is always white so it stays visible on the blue "on" track in
+            dark mode; flex + px keep it vertically centered and evenly inset. */}
         <span
-          className={`absolute top-0.5 w-5 h-5 bg-white dark:bg-slate-900 rounded-full shadow transition-transform ${
-            checked ? "translate-x-6" : "translate-x-0.5"
+          className={`inline-block w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-200 ${
+            checked ? "translate-x-6" : "translate-x-0"
           }`}
         />
       </button>
