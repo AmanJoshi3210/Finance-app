@@ -11,3 +11,75 @@
 :root.dark {
   color-scheme: dark;
 }
+
+/* ---------------------------------------------------------------------------
+   Accessibility modes — toggled as classes on <html> by AccessibilityContext.
+   These come after the Tailwind import so equal-specificity rules win ties.
+--------------------------------------------------------------------------- */
+
+/* Visible keyboard focus everywhere. :where() keeps specificity at zero so
+   any intentional per-element focus style still wins. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.dark :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline-color: #60a5fa;
+}
+
+/* Bold text: shift the whole weight scale up one step so hierarchy between
+   body text, labels and headings is preserved instead of flattened. */
+.a11y-bold body {
+  font-weight: 500;
+}
+.a11y-bold .font-medium {
+  font-weight: 600;
+}
+.a11y-bold .font-semibold,
+.a11y-bold .font-bold {
+  font-weight: 700;
+}
+
+/* High contrast: darken/lighten the muted grays used for secondary text and
+   strengthen borders. Light-mode overrides are scoped with :not(.dark) so
+   they can't leak into dark mode (same specificity as the dark: variants). */
+.a11y-high-contrast:not(.dark) :is(.text-slate-400, .text-slate-500) {
+  color: #334155; /* slate-700 */
+}
+.a11y-high-contrast:not(.dark) :is(.text-slate-600, .text-slate-700) {
+  color: #0f172a; /* slate-900 */
+}
+.a11y-high-contrast:not(.dark) :is(.border-slate-100, .border-slate-200) {
+  border-color: #94a3b8; /* slate-400 */
+}
+.a11y-high-contrast.dark :is(.dark\:text-slate-400, .dark\:text-slate-500) {
+  color: #e2e8f0; /* slate-200 */
+}
+.a11y-high-contrast.dark :is(.dark\:text-slate-300, .dark\:text-slate-200) {
+  color: #f8fafc; /* slate-50 */
+}
+.a11y-high-contrast.dark :is(.dark\:border-slate-700, .dark\:border-slate-800) {
+  border-color: #64748b; /* slate-500 */
+}
+
+/* Underline links so they don't rely on color alone. */
+.a11y-underline-links a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Reduce motion: collapse transitions/animations to instant, but keep
+   loading spinners moving so async states don't look frozen. */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  transition-duration: 0.01ms !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+}
+.reduce-motion .animate-spin {
+  animation-duration: 1s !important;
+  animation-iteration-count: infinite !important;
+}

@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Menu, User, HelpCircle, Bell, BadgeIndianRupee, AlertTriangle, CalendarClock, Sun, Moon, LogOut } from "lucide-react";
+import { Menu, User, HelpCircle, Bell, BadgeIndianRupee, AlertTriangle, CalendarClock, Sun, Moon, LogOut, ALargeSmall, Minus, Plus, Accessibility } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import { useAccessibility, TEXT_SCALES } from "../context/AccessibilityContext";
 import axiosInstance from "../api/axiosInstance";
 
 const NOTIFICATION_ICONS = {
@@ -25,6 +26,7 @@ const formatRelativeTime = (isoDate) => {
 export default function Navbar({ title, onMenuClick }) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { settings: a11y, stepTextScale } = useAccessibility();
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -34,6 +36,12 @@ export default function Navbar({ title, onMenuClick }) {
   const [unreadCount, setUnreadCount] = useState(0);
   const notifRef = useRef(null);
 
+  const [isA11yOpen, setIsA11yOpen] = useState(false);
+  const a11yRef = useRef(null);
+
+  const textScaleIndex = TEXT_SCALES.findIndex((s) => s.value === a11y.textScale);
+  const textScaleLabel = TEXT_SCALES[textScaleIndex]?.label ?? "Default";
+
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
@@ -42,9 +50,23 @@ export default function Navbar({ title, onMenuClick }) {
       if (notifRef.current && !notifRef.current.contains(e.target)) {
         setIsNotifOpen(false);
       }
+      if (a11yRef.current && !a11yRef.current.contains(e.target)) {
+        setIsA11yOpen(false);
+      }
+    };
+    const handleEscape = (e) => {
+      if (e.key === "Escape") {
+        setIsMenuOpen(false);
+        setIsNotifOpen(false);
+        setIsA11yOpen(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
   }, []);
 
   useEffect(() => {
@@ -84,6 +106,7 @@ export default function Navbar({ title, onMenuClick }) {
         {/* ✅ Mobile Menu Button (Hidden on Desktop) */}
         <button
           onClick={onMenuClick}
+          aria-label="Open navigation menu"
           className="p-2 -ml-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg md:hidden transition-colors"
         >
           <Menu size={24} />
@@ -101,11 +124,70 @@ export default function Navbar({ title, onMenuClick }) {
           {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
         </button>
 
+        <div className="relative" ref={a11yRef}>
+          <button
+            onClick={() => setIsA11yOpen((prev) => !prev)}
+            className="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
+            aria-label="Text size and accessibility"
+            aria-haspopup="true"
+            aria-expanded={isA11yOpen}
+          >
+            <ALargeSmall size={20} />
+          </button>
+
+          {isA11yOpen && (
+            <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-900 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 py-2 z-50">
+              <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800">
+                <h2 className="text-sm font-bold text-slate-800 dark:text-slate-100">Text size</h2>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 px-4 py-3">
+                <button
+                  onClick={() => stepTextScale(-1)}
+                  disabled={textScaleIndex <= 0}
+                  aria-label="Decrease text size"
+                  className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Minus size={16} />
+                </button>
+
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200" aria-live="polite">
+                  {textScaleLabel}
+                </span>
+
+                <button
+                  onClick={() => stepTextScale(1)}
+                  disabled={textScaleIndex >= TEXT_SCALES.length - 1}
+                  aria-label="Increase text size"
+                  className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+
+              <div className="my-1 border-t border-slate-100 dark:border-slate-800" />
+
+              <button
+                onClick={() => {
+                  setIsA11yOpen(false);
+                  navigate("/settings", { state: { section: "appearance" } });
+                }}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+              >
+                <Accessibility size={16} />
+                All accessibility options
+              </button>
+            </div>
+          )}
+        </div>
+
         <div className="relative" ref={notifRef}>
           <button
             onClick={() => setIsNotifOpen((prev) => !prev)}
             className="relative p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors"
-            aria-label="Notifications"
+            aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : "Notifications"}
+            aria-haspopup="true"
+            aria-expanded={isNotifOpen}
           >
             <Bell size={20} />
             {unreadCount > 0 && (
@@ -159,6 +241,9 @@ export default function Navbar({ title, onMenuClick }) {
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setIsMenuOpen((prev) => !prev)}
+            aria-label="Account menu"
+            aria-haspopup="true"
+            aria-expanded={isMenuOpen}
             className="w-8 h-8 bg-blue-100 dark:bg-blue-950 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-sm hover:ring-2 hover:ring-blue-200 dark:hover:ring-blue-800 transition-all"
           >
             {user?.name ? user.name.charAt(0).toUpperCase() : "U"}

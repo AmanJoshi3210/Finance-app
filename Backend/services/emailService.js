@@ -1,47 +1,59 @@
-import nodemailer from "nodemailer";
+// Transactional email via Brevo's HTTP API (https://api.brevo.com), NOT raw SMTP.
+//
+// Why: Render's free tier blocks outbound SMTP ports (25/465/587), so
+// nodemailer -> smtp.gmail.com hangs and times out in deployment (works locally
+// because a laptop isn't blocked). Brevo's API goes over HTTPS (443), which is
+// never blocked, so the same code path works both locally and on Render.
+//
+// sendEmail keeps the same { to, subject, text, html } signature, so callers
+// (OTP flow in Routes/userRoutes.js, notificationService.js) are unchanged.
 
-// Cached across warm serverless invocations — same idiom as the `isConnected`
-// flag in connection/Connection.js, so we don't rebuild an SMTP connection
-// pool on every request.
-let transporter;
-let transporterInitialized = false;
+const BREVO_ENDPOINT = "https://api.brevo.com/v3/smtp/email";
 
-const getTransporter = () => {
-  if (transporterInitialized) return transporter;
-  transporterInitialized = true;
-
-  if (!process.env.SMTP_HOST) {
-    transporter = null; // email disabled (e.g. local dev with no SMTP configured)
-    return transporter;
-  }
-
-  transporter = nodemailer.createTransport({
-    host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT) || 587,
-    secure: Number(process.env.SMTP_PORT) === 465,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-  });
-
-  return transporter;
-};
+// The "from" address must be a sender you've verified in Brevo. We reuse the
+// existing SMTP_USER (your Gmail) so you don't need a new env var for it;
+// set BREVO_SENDER_EMAIL only if you want a different verified sender.
+const getSenderEmail = () =>
+  process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER;
 
 // Fire-and-forget friendly: never throws, swallows its own errors so a
-// notification/transaction flow can never fail because email delivery did.
+// notification/transaction/OTP flow can never fail because email delivery did.
 export const sendEmail = async ({ to, subject, text, html }) => {
   try {
-    const t = getTransporter();
-    if (!t || !to) return false;
+    const apiKey = process.env.BREVO_API_KEY;
+    const senderEmail = getSenderEmail();
 
-    await t.sendMail({
-      from: process.env.EMAIL_FROM || process.env.SMTP_USER,
-      to,
-      subject,
-      text,
-      html,
+    // Email disabled (no API key / no sender) or nothing to send to.
+    if (!apiKey || !senderEmail || !to) return false;
+
+    const res = await fetch(BREVO_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "api-key": apiKey,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        sender: {
+          name: process.env.EMAIL_FROM || "FinTrack",
+          email: senderEmail,
+        },
+        to: [{ email: to }],
+        subject,
+        textContent: text,
+        htmlContent: html,
+      }),
+      // Guard against a hung request; HTTPS won't be blocked, but be defensive.
+      signal: AbortSignal.timeout(10000),
     });
+
+    if (!res.ok) {
+      // Brevo returns a JSON error body (e.g. unverified sender, bad key).
+      const detail = await res.text().catch(() => "");
+      console.error(`Send Email Error: Brevo ${res.status} ${detail}`);
+      return false;
+    }
+
     return true;
   } catch (error) {
     console.error("Send Email Error:", error.message);

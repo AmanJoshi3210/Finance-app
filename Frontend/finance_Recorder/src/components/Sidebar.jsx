@@ -39,11 +39,12 @@ export default function Sidebar({ isOpen, onClose }) {
   return (
     <>
       {/* ✅ Mobile Backdrop (Dark overlay when sidebar is open) */}
-      <div 
+      <div
         className={`fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm transition-opacity md:hidden ${
           isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
         onClick={onClose}
+        aria-hidden="true"
       />
 
       {/* ✅ Sidebar Container */}
@@ -57,17 +58,18 @@ export default function Sidebar({ isOpen, onClose }) {
                 FinTrack
               </h1>
               {/* ✅ Close Button (Mobile Only) */}
-              <button onClick={onClose} className="md:hidden text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+              <button onClick={onClose} aria-label="Close navigation menu" className="md:hidden text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
                 <X size={24} />
               </button>
             </div>
 
-            <nav className="mt-6 px-3 space-y-1">
+            <nav className="mt-6 px-3 space-y-1" aria-label="Main navigation">
               {links.map((link) => (
                 <Link
                   key={link.name}
                   to={link.path}
                   onClick={onClose} // Close sidebar when link is clicked on mobile
+                  aria-current={location.pathname === link.path ? "page" : undefined}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                     location.pathname === link.path
                       ? "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300"
@@ -89,7 +91,7 @@ export default function Sidebar({ isOpen, onClose }) {
               <LogOut size={20} />
               Logout
             </button>
-            <div className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-red-50 dark:hover:bg-slate-800 rounded-lg transition-colors"> By Aman Joshi</div>
+            <p className="px-4 py-3 text-sm font-medium text-blue-600 dark:text-blue-400">By Aman Joshi</p>
           </div>
         </div>
       </div>
