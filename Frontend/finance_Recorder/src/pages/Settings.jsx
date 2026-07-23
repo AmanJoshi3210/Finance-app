@@ -3,7 +3,9 @@ import Sidebar from "../components/Sidebar";
 import Navbar from "../components/Navbar";
 import axiosInstance from "../api/axiosInstance";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useTheme } from "../context/ThemeContext";
+import { useAccessibility, TEXT_SCALES } from "../context/AccessibilityContext";
+import { useNavigate, useLocation } from "react-router-dom";
 import Snackbar from "@mui/material/Snackbar";
 import Alert from "@mui/material/Alert";
 import {
@@ -21,19 +23,41 @@ import {
   Trash2,
   Tag,
   KeyRound,
+  Accessibility,
+  Sun,
+  Moon,
+  Contrast,
+  Link2,
+  Type,
+  Zap,
+  RotateCcw,
 } from "lucide-react";
 
 const SETTINGS_KEY = "finance_app_settings";
 const currentMonthString = () => new Date().toISOString().slice(0, 7);
 
+const SECTIONS = [
+  { id: "budget", label: "Budget & Limits", icon: Target },
+  { id: "appearance", label: "Appearance & Accessibility", icon: Accessibility },
+  { id: "profile", label: "Profile", icon: User },
+  { id: "notifications", label: "Notifications", icon: Bell },
+  { id: "security", label: "Security", icon: Shield },
+];
+
 export default function Settings() {
+  const location = useLocation();
   const [monthlyLimit, setMonthlyLimit] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [open, setOpen] = useState(false);
   const [snackMessage, setSnackMessage] = useState("Settings updated successfully!");
   const [snackSeverity, setSnackSeverity] = useState("success");
-  const [activeSection, setActiveSection] = useState("budget");
+  const [activeSection, setActiveSection] = useState(
+    SECTIONS.some((s) => s.id === location.state?.section) ? location.state.section : "budget"
+  );
+
+  const { theme, toggleTheme } = useTheme();
+  const { settings: a11y, updateSetting, resetSettings } = useAccessibility();
 
   const [categories, setCategories] = useState([]);
   const [categoryLimits, setCategoryLimits] = useState({}); // { [category]: { value, budgetId, saving } }
@@ -298,55 +322,26 @@ export default function Settings() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <div className="lg:col-span-1 space-y-2">
-              <button
-                onClick={() => setActiveSection("budget")}
-                className={`w-full flex items-center gap-3 px-4 py-3 font-medium rounded-xl transition-colors ${
-                  activeSection === "budget"
-                    ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-blue-100 dark:border-blue-900 ring-2 ring-blue-50 dark:ring-blue-950"
-                    : "text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
-                }`}
-              >
-                <Target size={18} />
-                Budget & Limits
-              </button>
-
-              <button
-                onClick={() => setActiveSection("profile")}
-                className={`w-full flex items-center gap-3 px-4 py-3 font-medium rounded-xl transition-colors ${
-                  activeSection === "profile"
-                    ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-blue-100 dark:border-blue-900 ring-2 ring-blue-50 dark:ring-blue-950"
-                    : "text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
-                }`}
-              >
-                <User size={18} />
-                Profile
-              </button>
-
-              <button
-                onClick={() => setActiveSection("notifications")}
-                className={`w-full flex items-center gap-3 px-4 py-3 font-medium rounded-xl transition-colors ${
-                  activeSection === "notifications"
-                    ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-blue-100 dark:border-blue-900 ring-2 ring-blue-50 dark:ring-blue-950"
-                    : "text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
-                }`}
-              >
-                <Bell size={18} />
-                Notifications
-              </button>
-
-              <button
-                onClick={() => setActiveSection("security")}
-                className={`w-full flex items-center gap-3 px-4 py-3 font-medium rounded-xl transition-colors ${
-                  activeSection === "security"
-                    ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-blue-100 dark:border-blue-900 ring-2 ring-blue-50 dark:ring-blue-950"
-                    : "text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
-                }`}
-              >
-                <Shield size={18} />
-                Security
-              </button>
-            </div>
+            <nav className="lg:col-span-1 space-y-2" aria-label="Settings sections">
+              {SECTIONS.map(({ id, label, ...section }) => {
+                const Icon = section.icon;
+                return (
+                <button
+                  key={id}
+                  onClick={() => setActiveSection(id)}
+                  aria-current={activeSection === id ? "true" : undefined}
+                  className={`w-full flex items-center gap-3 px-4 py-3 font-medium rounded-xl transition-colors text-left ${
+                    activeSection === id
+                      ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-blue-100 dark:border-blue-900 ring-2 ring-blue-50 dark:ring-blue-950"
+                      : "text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
+                  }`}
+                >
+                  <Icon size={18} className="shrink-0" />
+                  {label}
+                </button>
+                );
+              })}
+            </nav>
 
             <div className="lg:col-span-2">
               {activeSection === "budget" && (
@@ -470,6 +465,139 @@ export default function Settings() {
                     )}
                   </div>
                 </div>
+                </div>
+              )}
+
+              {activeSection === "appearance" && (
+                <div className="space-y-6">
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+                      <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Theme</h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                        Choose how FinTrack looks on this device.
+                      </p>
+                    </div>
+
+                    <div className="p-6 md:p-8">
+                      <div className="grid grid-cols-2 gap-3 max-w-md" role="group" aria-label="Theme">
+                        {[
+                          { id: "light", label: "Light", icon: Sun },
+                          { id: "dark", label: "Dark", icon: Moon },
+                        ].map(({ id, label, ...option }) => {
+                          const Icon = option.icon;
+                          return (
+                          <button
+                            key={id}
+                            onClick={() => theme !== id && toggleTheme()}
+                            aria-pressed={theme === id}
+                            className={`flex items-center justify-center gap-2 px-4 py-3 rounded-xl border font-semibold transition-all ${
+                              theme === id
+                                ? "border-blue-500 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 ring-2 ring-blue-100 dark:ring-blue-900"
+                                : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                            }`}
+                          >
+                            <Icon size={18} />
+                            {label}
+                          </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+                      <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Text Size</h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                        Scale the entire app up or down. Changes apply instantly.
+                      </p>
+                    </div>
+
+                    <div className="p-6 md:p-8">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3" role="group" aria-label="Text size">
+                        {TEXT_SCALES.map((scale) => (
+                          <button
+                            key={scale.value}
+                            onClick={() => updateSetting("textScale", scale.value)}
+                            aria-pressed={a11y.textScale === scale.value}
+                            className={`flex flex-col items-center justify-end gap-1 px-3 py-4 rounded-xl border transition-all ${
+                              a11y.textScale === scale.value
+                                ? "border-blue-500 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 ring-2 ring-blue-100 dark:ring-blue-900"
+                                : "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                            }`}
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="font-bold leading-none"
+                              style={{ fontSize: `${scale.value * 1.25}rem` }}
+                            >
+                              Aa
+                            </span>
+                            <span className="text-xs font-medium mt-1">{scale.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+                      <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Accessibility</h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                        Readability and motion preferences, saved to this device.
+                      </p>
+                    </div>
+
+                    <div className="p-6 md:p-8 space-y-4">
+                      <SwitchRow
+                        label="Bold text"
+                        description="Increase font weight across the app for easier reading."
+                        checked={a11y.boldText}
+                        onToggle={() => updateSetting("boldText", !a11y.boldText)}
+                        icon={<Type size={16} className="text-slate-500 dark:text-slate-400" />}
+                      />
+
+                      <SwitchRow
+                        label="High contrast"
+                        description="Darken muted text and strengthen borders for better visibility."
+                        checked={a11y.highContrast}
+                        onToggle={() => updateSetting("highContrast", !a11y.highContrast)}
+                        icon={<Contrast size={16} className="text-slate-500 dark:text-slate-400" />}
+                      />
+
+                      <SwitchRow
+                        label="Underline links"
+                        description="Always underline links instead of relying on color alone."
+                        checked={a11y.underlineLinks}
+                        onToggle={() => updateSetting("underlineLinks", !a11y.underlineLinks)}
+                        icon={<Link2 size={16} className="text-slate-500 dark:text-slate-400" />}
+                      />
+
+                      <SwitchRow
+                        label="Reduce motion"
+                        description="Minimize animations and transitions throughout the app."
+                        checked={a11y.reduceMotion}
+                        onToggle={() => updateSetting("reduceMotion", !a11y.reduceMotion)}
+                        icon={<Zap size={16} className="text-slate-500 dark:text-slate-400" />}
+                      />
+
+                      <div className="pt-4 flex items-center justify-between gap-4 flex-wrap">
+                        <p className="text-xs text-slate-400 dark:text-slate-500">
+                          Preferences apply instantly and are stored in this browser.
+                        </p>
+                        <button
+                          onClick={() => {
+                            resetSettings();
+                            showToast("Accessibility settings reset to defaults.");
+                          }}
+                          className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                        >
+                          <RotateCcw size={14} />
+                          Reset to defaults
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -660,8 +788,13 @@ function SwitchRow({ label, description, checked, onToggle, icon }) {
 
       <button
         type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
         onClick={onToggle}
-        className={`relative w-12 h-6 rounded-full transition-colors ${checked ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-600"}`}
+        className={`relative w-12 h-6 shrink-0 rounded-full transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${
+          checked ? "bg-blue-600" : "bg-slate-300 dark:bg-slate-600"
+        }`}
       >
         <span
           className={`absolute top-0.5 w-5 h-5 bg-white dark:bg-slate-900 rounded-full shadow transition-transform ${
