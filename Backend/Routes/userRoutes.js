@@ -12,7 +12,6 @@ const OTP_EXPIRY_MINUTES = 10;
 const generateOtp = () => crypto.randomInt(100000, 1000000).toString();
 
 const sendOtpEmail = async (email, otp) => {
-  console.log(`[TEMP DEBUG OTP] ${email}: ${otp}`);
   await sendEmail({
     to: email,
     subject: "Your FinTrack verification code",
@@ -22,7 +21,6 @@ const sendOtpEmail = async (email, otp) => {
 };
 
 const sendPasswordResetOtpEmail = async (email, otp) => {
-  console.log(`[TEMP DEBUG OTP] ${email}: ${otp}`);
   await sendEmail({
     to: email,
     subject: "Your FinTrack password reset code",
