@@ -53,7 +53,7 @@ export default function VerifyOtp() {
         { email, otp: otp.trim() }
       );
 
-      login(res.data.token);
+      login(res.data.accessToken);
       navigate("/dashboard", { replace: true });
     } catch (err) {
       console.error("OTP verification failed:", err);

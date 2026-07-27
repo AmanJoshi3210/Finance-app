@@ -12,15 +12,15 @@ export default function Login() {
 
   const location = useLocation();
   const [info, setInfo] = useState(location.state?.message || "");
-  const { login, token } = useAuth();
+  const { login, accessToken } = useAuth();
   const navigate = useNavigate();
 
   // ✅ Redirect if already logged in
   useEffect(() => {
-    if (token) {
+    if (accessToken) {
       navigate("/dashboard", { replace: true });
     }
-  }, [token, navigate]);
+  }, [accessToken, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -49,7 +49,7 @@ export default function Login() {
         return;
       }
 
-      login(data.token);
+      login(data.accessToken);
       navigate("/dashboard", { replace: true });
     } catch (err) {
       console.error("Login failed:", err);

@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import dotenv from "dotenv";
 
 import connectDB from "../connection/Connection.js";
@@ -48,6 +49,7 @@ app.use(
 
 // ====== Middleware ======
 app.use(express.json());
+app.use(cookieParser());
 
 // ====== DB Connection ======
 connectDB();

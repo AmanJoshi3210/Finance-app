@@ -267,11 +267,28 @@ router.post("/verify-otp", async (req, res) => {
     user.otpExpiry = undefined;
     await user.save();
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
+    const accessToken = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_ACCESS_SECRET,
+      { expiresIn: "15m" }
+    );
+
+    const refreshToken = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_REFRESH_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    // Set refreshToken as HttpOnly cookie (secure, not accessible to JS)
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "None",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: "/",
     });
 
-    res.json({ token, userId: user._id, name: user.name });
+    res.json({ accessToken, userId: user._id, name: user.name });
   } catch (err) {
     console.error("OTP verify error:", err);
     res.status(500).json({ message: "Server error" });
@@ -343,11 +360,36 @@ router.post("/login", async (req, res) => {
       return res.json({ twoFactorRequired: true, email: user.email });
     }
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
+    const accessToken = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_ACCESS_SECRET,
+      {
+        expiresIn: "15m",
+      }
+    );
+
+    const refreshToken = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_REFRESH_SECRET,
+      {
+        expiresIn: "7d",
+      }
+    );
+
+    // Set refreshToken as HttpOnly cookie (secure, not accessible to JS)
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "None",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: "/",
     });
 
-    res.json({ token, userId: user._id, name: user.name });
+    res.json({
+      accessToken,
+      userId: user._id,
+      name: user.name,
+    });
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ message: "Server error" });
@@ -386,11 +428,37 @@ router.post("/verify-login-otp", async (req, res) => {
     user.otpExpiry = undefined;
     await user.save();
 
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1d",
+    const accessToken = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_ACCESS_SECRET,
+      {
+        expiresIn: "15m",
+      }
+    );
+
+    const refreshToken = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_REFRESH_SECRET,
+      {
+        expiresIn: "7d",
+      }
+    );
+
+    // Set refreshToken as HttpOnly cookie (secure, not accessible to JS)
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: "None",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: "/",
     });
 
-    res.json({ token, userId: user._id, name: user.name });
+    res.json({
+      accessToken,
+      userId: user._id,
+      name: user.name,
+    });
+    
   } catch (err) {
     console.error("Login OTP verify error:", err);
     res.status(500).json({ message: "Server error" });
@@ -492,6 +560,43 @@ router.post("/reset-password", async (req, res) => {
     console.error("Reset password error:", err);
     res.status(500).json({ message: "Server error" });
   }
+});
+
+// REFRESH TOKEN — exchanges a valid refreshToken (from HttpOnly cookie) for a new accessToken
+// without requiring the user to re-enter credentials.
+router.post("/refresh-token", async (req, res) => {
+  try {
+    const refreshToken = req.cookies.refreshToken;
+    if (!refreshToken) {
+      return res.status(401).json({ message: "Refresh token is required" });
+    }
+
+    const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+    const user = await User.findById(decoded.userId);
+    if (!user) return res.status(401).json({ message: "User not found" });
+
+    const accessToken = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_ACCESS_SECRET,
+      { expiresIn: "15m" }
+    );
+
+    res.json({ accessToken });
+  } catch (err) {
+    console.error("Token refresh error:", err);
+    res.status(401).json({ message: "Invalid refresh token" });
+  }
+});
+
+// LOGOUT — clears the refreshToken HttpOnly cookie
+router.post("/logout", (req, res) => {
+  res.clearCookie("refreshToken", {
+    httpOnly: true,
+    secure: true,
+    sameSite: "None",
+    path: "/",
+  });
+  res.json({ message: "Logged out successfully" });
 });
 
 export default router;
