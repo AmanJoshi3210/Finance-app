@@ -111,6 +111,16 @@ export const runDueRecurringTransactions = async () => {
     try {
       let iterations = 0;
       while (record.nextRunDate <= now && iterations < 366) {
+        // Captured before the transaction so the callback stays idempotent:
+        // withTransaction re-runs it on a write conflict, and advancing from
+        // the mutated field instead would skip a period on every retry.
+        const runDate = record.nextRunDate;
+
+        // The posting and the cursor advance must commit together. Advancing
+        // outside the transaction left a window where a crash or a failed
+        // save (a redeploy, an idle spin-down, a retried cron request) kept
+        // nextRunDate on the period just posted — so the next run posted it
+        // a second time and inflated the user's totals.
         await session.withTransaction(async () => {
           await createTransactionRecord(
             record.userId,
@@ -123,10 +133,10 @@ export const runDueRecurringTransactions = async () => {
             },
             session
           );
-        });
 
-        record.nextRunDate = advanceDate(record.nextRunDate, record.frequency);
-        await record.save();
+          record.nextRunDate = advanceDate(runDate, record.frequency);
+          await record.save({ session });
+        });
 
         createdCount++;
         iterations++;

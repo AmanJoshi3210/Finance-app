@@ -106,8 +106,8 @@ export default function SavingsGoalFormModal({ mode = "add", goal = null, onClos
                 <input
                   type="number"
                   name="targetAmount"
-                  min="1"
-                  step="1"
+                  min="0.01"
+                  step="0.01"
                   value={form.targetAmount}
                   onChange={handleChange}
                   placeholder="0.00"

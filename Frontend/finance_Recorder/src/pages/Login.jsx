@@ -29,9 +29,12 @@ export default function Login() {
     setIsLoading(true); // Start loading
 
     try {
+      // The password is sent exactly as typed. Signup hashes it untrimmed, so
+      // trimming here silently locked out anyone whose password had a leading
+      // or trailing space — bcrypt.compare would never match what was stored.
       const res = await axiosInstance.post("/api/users/login", {
         email: email.trim(),
-        password: password.trim(),
+        password,
       });
 
       const data = res.data;
@@ -43,6 +46,10 @@ export default function Login() {
           state: {
             email: data.email || email.trim(),
             mode: "login",
+            // Proof this password check happened. The OTP endpoints reject
+            // requests without it, so the emailed code can't be redeemed on
+            // its own by someone who only knows the email address.
+            otpToken: data.otpToken,
             message: "Enter the code we sent to finish signing in.",
           },
         });

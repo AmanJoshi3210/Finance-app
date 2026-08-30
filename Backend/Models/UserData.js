@@ -24,4 +24,10 @@ const userDataSchema = new mongoose.Schema({
   },
 });
 
+// Exactly one totals document per user. applyUserDataDelta relies on an
+// upsert keyed on userId; without this index two concurrent first writes
+// (a double-clicked save, or withTransaction retrying) both miss and both
+// insert, after which the running totals silently split across two docs.
+userDataSchema.index({ userId: 1 }, { unique: true });
+
 export default mongoose.model("UserData", userDataSchema);

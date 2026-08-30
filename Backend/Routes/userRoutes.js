@@ -4,15 +4,65 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../Models/User.js";
 import authMiddleware from "../middleware/authMiddleware.js";
+import {
+  authAttemptLimiter,
+  otpRequestLimiter,
+  registerLimiter,
+} from "../middleware/rateLimiters.js";
 import { sendEmail } from "../services/emailService.js";
 const router = express.Router();
 
 const OTP_EXPIRY_MINUTES = 10;
 
+// Wrong guesses allowed against a single code before it's discarded. A
+// 6-digit code only has 900k possibilities, which is walkable within the
+// 10-minute window if failures are free.
+const MAX_OTP_ATTEMPTS = 5;
+
+// Proof that /login already accepted the password, carried by the client
+// through the 2FA step. Deliberately NOT signed with JWT_ACCESS_SECRET:
+// authMiddleware would otherwise accept this token as a full access token,
+// since it only reads `userId` off the payload.
+const twoFactorSecret = () => `${process.env.JWT_ACCESS_SECRET}::2fa`;
+
+const issueTwoFactorToken = (user) =>
+  jwt.sign({ userId: String(user._id), purpose: "2fa" }, twoFactorSecret(), {
+    expiresIn: `${OTP_EXPIRY_MINUTES}m`,
+  });
+
+// Returns the decoded payload, or null if the token is missing, expired,
+// signed with the wrong key, or isn't a 2FA token at all.
+const verifyTwoFactorToken = (token) => {
+  if (!token) return null;
+  try {
+    const decoded = jwt.verify(token, twoFactorSecret());
+    return decoded.purpose === "2fa" ? decoded : null;
+  } catch {
+    return null;
+  }
+};
+
+// Counts a wrong code against the user and burns the stored code once the
+// limit is reached, forcing the attacker back through the step that issued
+// it. codeField/expiryField let this guard the login/signup OTP and the
+// password-reset OTP with the same logic.
+const registerFailedOtpAttempt = async (user, codeField, expiryField) => {
+  user.otpAttempts = (user.otpAttempts || 0) + 1;
+
+  const exhausted = user.otpAttempts >= MAX_OTP_ATTEMPTS;
+  if (exhausted) {
+    user[codeField] = undefined;
+    user[expiryField] = undefined;
+    user.otpAttempts = 0;
+  }
+
+  await user.save();
+  return exhausted;
+};
+
 const generateOtp = () => crypto.randomInt(100000, 1000000).toString();
 
 const sendOtpEmail = async (email, otp) => {
-  console.log(`[TEMP DEBUG OTP] ${email}: ${otp}`);
   await sendEmail({
     to: email,
     subject: "Your FinTrack verification code",
@@ -22,7 +72,6 @@ const sendOtpEmail = async (email, otp) => {
 };
 
 const sendPasswordResetOtpEmail = async (email, otp) => {
-  console.log(`[TEMP DEBUG OTP] ${email}: ${otp}`);
   await sendEmail({
     to: email,
     subject: "Your FinTrack password reset code",
@@ -177,7 +226,7 @@ router.put("/change-password", authMiddleware, async (req, res) => {
 
 // REGISTER — creates an unverified account and emails a one-time code.
 // The account only becomes usable once /verify-otp confirms the code.
-router.post("/register", async (req, res) => {
+router.post("/register", registerLimiter, async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
@@ -238,7 +287,7 @@ router.post("/register", async (req, res) => {
 // VERIFY OTP — confirms the code emailed at signup and activates the account.
 // Succeeds by logging the user straight in, since verification is the final
 // signup step.
-router.post("/verify-otp", async (req, res) => {
+router.post("/verify-otp", authAttemptLimiter, async (req, res) => {
   try {
     const { email, otp } = req.body;
     if (!email || !otp) {
@@ -246,7 +295,9 @@ router.post("/verify-otp", async (req, res) => {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const user = await User.findOne({ email: normalizedEmail }).select("+otpCode +otpExpiry");
+    const user = await User.findOne({ email: normalizedEmail }).select(
+      "+otpCode +otpExpiry +otpAttempts"
+    );
     if (!user) return res.status(404).json({ message: "User not found" });
 
     if (user.isVerified) {
@@ -259,12 +310,18 @@ router.post("/verify-otp", async (req, res) => {
 
     const isMatch = await bcrypt.compare(otp, user.otpCode);
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid verification code" });
+      const exhausted = await registerFailedOtpAttempt(user, "otpCode", "otpExpiry");
+      return res.status(401).json({
+        message: exhausted
+          ? "Too many incorrect attempts. Please request a new code."
+          : "Invalid verification code",
+      });
     }
 
     user.isVerified = true;
     user.otpCode = undefined;
     user.otpExpiry = undefined;
+    user.otpAttempts = 0;
     await user.save();
 
     const accessToken = jwt.sign(
@@ -296,7 +353,7 @@ router.post("/verify-otp", async (req, res) => {
 });
 
 // RESEND OTP — issues a fresh code for a not-yet-verified account.
-router.post("/resend-otp", async (req, res) => {
+router.post("/resend-otp", otpRequestLimiter, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: "Email is required" });
@@ -312,6 +369,7 @@ router.post("/resend-otp", async (req, res) => {
     const otp = generateOtp();
     user.otpCode = await bcrypt.hash(otp, 10);
     user.otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+    user.otpAttempts = 0;
     await user.save();
 
     await sendOtpEmail(normalizedEmail, otp);
@@ -324,7 +382,7 @@ router.post("/resend-otp", async (req, res) => {
 });
 
 // LOGIN
-router.post("/login", async (req, res) => {
+router.post("/login", authAttemptLimiter, async (req, res) => {
   console.log("Login request received");
   try {
     const { email, password } = req.body;
@@ -353,11 +411,19 @@ router.post("/login", async (req, res) => {
       const otp = generateOtp();
       user.otpCode = await bcrypt.hash(otp, 10);
       user.otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+      user.otpAttempts = 0;
       await user.save();
 
       await sendOtpEmail(user.email, otp);
 
-      return res.json({ twoFactorRequired: true, email: user.email });
+      // otpToken is the client's receipt for having passed the password
+      // check. /verify-login-otp and /resend-login-otp both demand it, so
+      // the emailed code alone is never enough to obtain a session.
+      return res.json({
+        twoFactorRequired: true,
+        email: user.email,
+        otpToken: issueTwoFactorToken(user),
+      });
     }
 
     const accessToken = jwt.sign(
@@ -400,16 +466,34 @@ router.post("/login", async (req, res) => {
 // issued by /login only after a correct password, so confirming it (proof of
 // inbox access) is what completes the login. isVerified is left untouched — this
 // is a returning verified user, not signup.
-router.post("/verify-login-otp", async (req, res) => {
+router.post("/verify-login-otp", authAttemptLimiter, async (req, res) => {
   try {
-    const { email, otp } = req.body;
+    const { email, otp, otpToken } = req.body;
     if (!email || !otp) {
       return res.status(400).json({ message: "Email and code are required" });
     }
 
+    // The password was checked by /login, which is the only place otpToken is
+    // issued. Without this gate, email + a guessable 6-digit code would be a
+    // complete login on its own.
+    const pending = verifyTwoFactorToken(otpToken);
+    if (!pending) {
+      return res
+        .status(401)
+        .json({ message: "This sign-in attempt has expired. Please log in again." });
+    }
+
     const normalizedEmail = email.trim().toLowerCase();
-    const user = await User.findOne({ email: normalizedEmail }).select("+otpCode +otpExpiry");
+    const user = await User.findOne({ email: normalizedEmail }).select(
+      "+otpCode +otpExpiry +otpAttempts"
+    );
     if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (String(user._id) !== pending.userId) {
+      return res
+        .status(401)
+        .json({ message: "This sign-in attempt has expired. Please log in again." });
+    }
 
     if (!user.twoFactorEnabled) {
       return res.status(400).json({ message: "Two-factor authentication is not enabled" });
@@ -421,11 +505,17 @@ router.post("/verify-login-otp", async (req, res) => {
 
     const isMatch = await bcrypt.compare(otp, user.otpCode);
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid verification code" });
+      const exhausted = await registerFailedOtpAttempt(user, "otpCode", "otpExpiry");
+      return res.status(401).json({
+        message: exhausted
+          ? "Too many incorrect attempts. Please log in again to get a new code."
+          : "Invalid verification code",
+      });
     }
 
     user.otpCode = undefined;
     user.otpExpiry = undefined;
+    user.otpAttempts = 0;
     await user.save();
 
     const accessToken = jwt.sign(
@@ -466,14 +556,29 @@ router.post("/verify-login-otp", async (req, res) => {
 });
 
 // RESEND LOGIN OTP — reissues the second-factor code for a 2FA user.
-router.post("/resend-login-otp", async (req, res) => {
+router.post("/resend-login-otp", otpRequestLimiter, async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, otpToken } = req.body;
     if (!email) return res.status(400).json({ message: "Email is required" });
+
+    // Same gate as /verify-login-otp: minting a fresh code must require the
+    // password step, or an attacker could keep issuing codes to brute-force.
+    const pending = verifyTwoFactorToken(otpToken);
+    if (!pending) {
+      return res
+        .status(401)
+        .json({ message: "This sign-in attempt has expired. Please log in again." });
+    }
 
     const normalizedEmail = email.trim().toLowerCase();
     const user = await User.findOne({ email: normalizedEmail });
     if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (String(user._id) !== pending.userId) {
+      return res
+        .status(401)
+        .json({ message: "This sign-in attempt has expired. Please log in again." });
+    }
 
     if (!user.twoFactorEnabled) {
       return res.status(400).json({ message: "Two-factor authentication is not enabled" });
@@ -482,6 +587,7 @@ router.post("/resend-login-otp", async (req, res) => {
     const otp = generateOtp();
     user.otpCode = await bcrypt.hash(otp, 10);
     user.otpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+    user.otpAttempts = 0;
     await user.save();
 
     await sendOtpEmail(normalizedEmail, otp);
@@ -496,7 +602,7 @@ router.post("/resend-login-otp", async (req, res) => {
 // FORGOT PASSWORD — emails a one-time code for resetting the password.
 // Always responds with the same generic message so this endpoint can't be
 // used to discover which emails have accounts.
-router.post("/forgot-password", async (req, res) => {
+router.post("/forgot-password", otpRequestLimiter, async (req, res) => {
   try {
     const { email } = req.body;
     if (!email) return res.status(400).json({ message: "Email is required" });
@@ -512,6 +618,7 @@ router.post("/forgot-password", async (req, res) => {
     const otp = generateOtp();
     user.resetOtpCode = await bcrypt.hash(otp, 10);
     user.resetOtpExpiry = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+    user.otpAttempts = 0;
     await user.save();
 
     await sendPasswordResetOtpEmail(normalizedEmail, otp);
@@ -525,7 +632,7 @@ router.post("/forgot-password", async (req, res) => {
 
 // RESET PASSWORD — verifies the emailed code and sets a new password in a
 // single step.
-router.post("/reset-password", async (req, res) => {
+router.post("/reset-password", authAttemptLimiter, async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
     if (!email || !otp || !newPassword) {
@@ -537,7 +644,7 @@ router.post("/reset-password", async (req, res) => {
 
     const normalizedEmail = email.trim().toLowerCase();
     const user = await User.findOne({ email: normalizedEmail }).select(
-      "+resetOtpCode +resetOtpExpiry"
+      "+resetOtpCode +resetOtpExpiry +otpAttempts"
     );
     if (!user) return res.status(404).json({ message: "User not found" });
 
@@ -547,12 +654,18 @@ router.post("/reset-password", async (req, res) => {
 
     const isMatch = await bcrypt.compare(otp, user.resetOtpCode);
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid reset code" });
+      const exhausted = await registerFailedOtpAttempt(user, "resetOtpCode", "resetOtpExpiry");
+      return res.status(401).json({
+        message: exhausted
+          ? "Too many incorrect attempts. Please request a new code."
+          : "Invalid reset code",
+      });
     }
 
     user.password = await bcrypt.hash(newPassword, 10);
     user.resetOtpCode = undefined;
     user.resetOtpExpiry = undefined;
+    user.otpAttempts = 0;
     await user.save();
 
     res.json({ message: "Password reset successfully" });

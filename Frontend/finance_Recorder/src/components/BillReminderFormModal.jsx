@@ -116,7 +116,7 @@ export default function BillReminderFormModal({ mode = "add", reminder = null, o
                   type="number"
                   name="amount"
                   min="0"
-                  step="1"
+                  step="0.01"
                   value={form.amount}
                   onChange={handleChange}
                   placeholder="0.00"

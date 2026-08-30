@@ -40,11 +40,22 @@ export const updateUserData = async (req, res) => {
 };
 
 // 📄 Get current user data
+//
+// A user has no UserData document until their first transaction upserts one
+// (or they set a monthly limit), so "missing" is the normal state for a
+// freshly-verified account — not an error. Returning zeroed totals instead of
+// a 404 keeps the dashboard's Promise.all from rejecting and blanking every
+// other panel on the very first visit. Mirrors how getMonthlyLimit already
+// treats the empty case.
 export const getUserData = async (req, res) => {
   try {
     const userId = req.user.userId;
     const data = await UserData.findOne({ userId });
-    if (!data) return res.status(404).json({ message: "UserData not found" });
+
+    if (!data) {
+      return res.json({ userId, monthlyLimit: 0, totalCredit: 0, totalDebit: 0 });
+    }
+
     res.json(data);
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -17,6 +17,9 @@ export default function VerifyOtp() {
   // factor for a returning user who enabled 2FA. They hit different endpoints.
   const mode = location.state?.mode || "signup";
   const isLogin = mode === "login";
+  // Issued by /login once the password checked out. The login-OTP endpoints
+  // require it, so the second factor can't stand in for the first.
+  const otpToken = location.state?.otpToken;
 
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
@@ -27,11 +30,14 @@ export default function VerifyOtp() {
 
   // Signup/Login always route here with the email to verify. Without it
   // there's nothing to check the code against, so bounce back where they came.
+  // The 2FA step additionally needs otpToken — a reload drops router state, and
+  // the server would reject the verify anyway, so send them back to re-enter
+  // the password rather than into a form that can't succeed.
   useEffect(() => {
-    if (!email) {
+    if (!email || (isLogin && !otpToken)) {
       navigate(isLogin ? "/login" : "/signup", { replace: true });
     }
-  }, [email, isLogin, navigate]);
+  }, [email, isLogin, otpToken, navigate]);
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -39,7 +45,7 @@ export default function VerifyOtp() {
     return () => clearInterval(timer);
   }, [cooldown]);
 
-  if (!email) return null;
+  if (!email || (isLogin && !otpToken)) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -50,7 +56,7 @@ export default function VerifyOtp() {
     try {
       const res = await axiosInstance.post(
         isLogin ? "/api/users/verify-login-otp" : "/api/users/verify-otp",
-        { email, otp: otp.trim() }
+        isLogin ? { email, otp: otp.trim(), otpToken } : { email, otp: otp.trim() }
       );
 
       login(res.data.accessToken);
@@ -70,7 +76,7 @@ export default function VerifyOtp() {
     try {
       await axiosInstance.post(
         isLogin ? "/api/users/resend-login-otp" : "/api/users/resend-otp",
-        { email }
+        isLogin ? { email, otpToken } : { email }
       );
       setInfo("A new code has been sent to your email.");
       setCooldown(RESEND_COOLDOWN_SECONDS);

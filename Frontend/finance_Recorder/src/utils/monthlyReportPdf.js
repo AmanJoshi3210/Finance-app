@@ -19,7 +19,10 @@ const PAGE = { width: 595.28, height: 841.89, margin: 48 }; // A4 portrait, pt
 
 // jsPDF's built-in Helvetica has no ₹ glyph, so amounts use an "Rs" prefix.
 const formatAmount = (value) =>
-  `Rs ${new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 }).format(value || 0)}`;
+  `Rs ${new Intl.NumberFormat("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value || 0)}`;
 
 // Indian-style compact axis labels (K / L / Cr).
 const formatCompact = (value) => {

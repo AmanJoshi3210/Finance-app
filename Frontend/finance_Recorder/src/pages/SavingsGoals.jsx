@@ -40,7 +40,7 @@ export default function SavingsGoals() {
   }, [fetchGoals]);
 
   const formatCurrency = (amount) =>
-    new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(amount);
+    new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(amount);
 
   const formatDate = (dateString) =>
     new Date(dateString).toLocaleDateString("en-IN", { year: "numeric", month: "short", day: "numeric" });
@@ -202,7 +202,8 @@ export default function SavingsGoals() {
                         <div className="mt-4 flex gap-2">
                           <input
                             type="number"
-                            min="1"
+                            min="0.01"
+                            step="0.01"
                             autoFocus
                             value={contributionAmount}
                             onChange={(e) => setContributionAmount(e.target.value)}

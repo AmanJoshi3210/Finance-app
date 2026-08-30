@@ -146,7 +146,7 @@ export default function AccountFormModal({ mode = "add", account = null, onClose
                   <input
                     type="number"
                     name="openingBalance"
-                    step="1"
+                    step="0.01"
                     value={form.openingBalance}
                     onChange={handleChange}
                     placeholder="0.00"
