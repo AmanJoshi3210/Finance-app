@@ -184,8 +184,8 @@ export default function TransactionFormModal({
               <input
                 type="number"
                 name="amount"
-                min="1"
-                step="1"
+                min="0.01"
+                step="0.01"
                 value={form.amount}
                 onChange={handleChange}
                 placeholder="0.00"

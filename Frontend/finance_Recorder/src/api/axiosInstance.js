@@ -1,8 +1,22 @@
 import axios from "axios";
 
+const BASE_URL = import.meta.env.VITE_API_URL || "https://finance-app-nh7c.onrender.com";
+
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "https://finance-app-nh7c.onrender.com",
+  baseURL: BASE_URL,
   withCredentials: true, // Include cookies with every request
+});
+
+// Dedicated, interceptor-free client for the refresh call itself. Sending it
+// through axiosInstance would re-enter this same request interceptor (same
+// stale token/expiry still in localStorage), which would see "needs refresh"
+// again and, since isRefreshing is already true, queue itself in failedQueue
+// waiting on a processQueue() call that only fires once *this* request
+// finishes — a deadlock where the refresh request never actually goes out
+// and every queued call hangs forever.
+const refreshClient = axios.create({
+  baseURL: BASE_URL,
+  withCredentials: true,
 });
 
 let isRefreshing = false;
@@ -31,7 +45,7 @@ axiosInstance.interceptors.request.use((config) => {
     if (!isRefreshing) {
       isRefreshing = true;
 
-      return axiosInstance.post("/api/users/refresh-token")
+      return refreshClient.post("/api/users/refresh-token")
         .then(res => {
           const newAccessToken = res.data.accessToken;
           localStorage.setItem("accessToken", newAccessToken);

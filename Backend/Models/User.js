@@ -38,6 +38,14 @@ const userSchema = new mongoose.Schema({
     type: Date,
     select: false,
   },
+  // Wrong-code counter shared by every OTP flow (signup, login 2FA, password
+  // reset). The code is burned once this hits MAX_OTP_ATTEMPTS, so a 6-digit
+  // code can't be walked through at HTTP speed within its 10-minute window.
+  otpAttempts: {
+    type: Number,
+    default: 0,
+    select: false,
+  },
   resetOtpCode: {
     type: String,
     select: false,

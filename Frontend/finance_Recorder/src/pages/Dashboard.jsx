@@ -61,7 +61,11 @@ export default function Dashboard() {
         // never the full transaction history. The trend/category charts
         // pull their own slices (a monthly aggregation, and a wider-but-still-
         // capped page for category totals) alongside that.
-        const [userRes, txRes, trendRes, categoryRes, categoryBudgetsRes, insightsRes, accountsRes] = await Promise.all([
+        // allSettled, not all: these panels are independent, and one failing
+        // request used to reject the whole batch and leave the entire
+        // dashboard blank. Each panel now renders whatever its own call
+        // returned and falls back to its initial state otherwise.
+        const [userRes, txRes, trendRes, categoryRes, categoryBudgetsRes, insightsRes, accountsRes] = await Promise.allSettled([
           axiosInstance.get("/api/userdata"),
           axiosInstance.get("/api/transactions/recent", { params: { limit: 5 } }),
           axiosInstance.get("/api/transactions/monthly-trend"),
@@ -71,15 +75,24 @@ export default function Dashboard() {
           axiosInstance.get("/api/accounts"),
         ]);
 
-        setUserData(userRes.data);
-        setTransactions(txRes.data);
-        setMonthlyTrend(trendRes.data);
-        setCategoryTotals(getCategoryTotals(categoryRes.data.transactions || []));
+        const dataOf = (result, fallback) =>
+          result.status === "fulfilled" ? result.value.data : fallback;
+
+        const failures = [userRes, txRes, trendRes, categoryRes, categoryBudgetsRes, insightsRes, accountsRes]
+          .filter((r) => r.status === "rejected");
+        if (failures.length > 0) {
+          console.error("Dashboard partial fetch failure:", failures.map((f) => f.reason?.message));
+        }
+
+        setUserData(dataOf(userRes, { totalCredit: 0, totalDebit: 0, monthlyLimit: 0 }));
+        setTransactions(dataOf(txRes, []));
+        setMonthlyTrend(dataOf(trendRes, []));
+        setCategoryTotals(getCategoryTotals(dataOf(categoryRes, {}).transactions || []));
         setCategoryBudgets(
-          categoryBudgetsRes.data.reduce((acc, b) => ({ ...acc, [b.category]: b.limit }), {})
+          dataOf(categoryBudgetsRes, []).reduce((acc, b) => ({ ...acc, [b.category]: b.limit }), {})
         );
-        setForecast(insightsRes.data.forecast);
-        setAccounts(accountsRes.data);
+        setForecast(dataOf(insightsRes, {}).forecast ?? null);
+        setAccounts(dataOf(accountsRes, []));
 
       } catch (err) {
         console.error("Dashboard fetch error:", err.response || err.message);
@@ -92,11 +105,14 @@ export default function Dashboard() {
   }, [user, authLoading]);
 
   // Helper: Format Currency
+  // Paise are significant now that amounts accept decimals — rounding to
+  // whole rupees here made these totals disagree with the transaction list,
+  // which has always shown 2 decimals.
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
-      maximumFractionDigits: 0
+      maximumFractionDigits: 2
     }).format(amount);
   };
 

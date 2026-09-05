@@ -28,4 +28,9 @@ const monthlySummarySchema = new mongoose.Schema({
   },
 });
 
+// One summary per user per month. The snapshot job upserts on this pair, so
+// the index is what makes a concurrent cron run and lazy read-repair collapse
+// into a single row instead of racing to insert duplicates.
+monthlySummarySchema.index({ userId: 1, month: 1 }, { unique: true });
+
 export default mongoose.model("MonthlySummary", monthlySummarySchema);

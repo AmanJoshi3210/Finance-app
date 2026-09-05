@@ -25,6 +25,12 @@ const app = express();
 // let the browser cache-validate (304) a response and serve stale data.
 app.set("etag", false);
 
+// Render/Vercel terminate TLS and forward the real client IP in
+// X-Forwarded-For. Trust exactly one hop so the auth rate limiters key on the
+// caller instead of lumping every request behind the proxy into one bucket.
+// (A blanket `true` would let a client spoof the header and dodge the limit.)
+app.set("trust proxy", 1);
+
 const allowedOrigins = [
   "https://finance-app-rouge-eight.vercel.app",
   "https://finance-app-git-main-amanjoshi3210s-projects.vercel.app",
