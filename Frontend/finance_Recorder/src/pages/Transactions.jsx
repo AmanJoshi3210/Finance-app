@@ -1,7 +1,5 @@
 // src/pages/Transactions.jsx
 import React, { useCallback, useEffect, useState } from "react";
-import Sidebar from "../components/Sidebar";
-import Navbar from "../components/Navbar";
 import TransactionFormModal from "../components/TransactionFormModal";
 import ConfirmDialog from "../components/ConfirmDialog";
 import Pagination from "../components/Pagination";
@@ -45,9 +43,6 @@ export default function Transactions() {
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [exporting, setExporting] = useState(false);
   const [exportingXlsx, setExportingXlsx] = useState(false);
-
-  // ✅ State for Mobile Sidebar
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const navigate = useNavigate();
 
@@ -259,15 +254,9 @@ export default function Transactions() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 relative">
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-
-      {/* Main Content Area */}
-      <div className="flex-1 md:ml-64 transition-all duration-300">
-        <Navbar title="Transaction History" onMenuClick={() => setIsSidebarOpen(true)} />
-
-        <div className="max-w-5xl mx-auto p-6 md:p-8">
-          {/* Header & Filter Placeholder */}
+    <>
+      <div className="max-w-5xl mx-auto p-6 md:p-8">
+        {/* Header & Filter Placeholder */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
               <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Recent Transactions</h1>
@@ -499,7 +488,6 @@ export default function Transactions() {
               onPageChange={setPage}
             />
           )}
-        </div>
       </div>
 
       {editingTransaction && (
@@ -523,6 +511,6 @@ export default function Transactions() {
           onCancel={() => setConfirmDialog(null)}
         />
       )}
-    </div>
+    </>
   );
 }

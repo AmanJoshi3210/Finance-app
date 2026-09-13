@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import axiosInstance from "../api/axiosInstance";
 
 const AuthContext = createContext();
@@ -8,6 +9,23 @@ export const AuthProvider = ({ children }) => {
   const [tokenExpiry, setTokenExpiry] = useState(parseInt(localStorage.getItem("tokenExpiry") || 0));
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  // axiosInstance can't reach useNavigate directly (it's a plain module, not a
+  // component), so it signals an expired session via this event instead of
+  // hard-redirecting with window.location.href, which used to force a full
+  // page reload on every dashboard/API call that hit an expired token.
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      setAccessToken(null);
+      setTokenExpiry(0);
+      setUser(null);
+      navigate("/login", { replace: true });
+    };
+
+    window.addEventListener("auth:sessionExpired", handleSessionExpired);
+    return () => window.removeEventListener("auth:sessionExpired", handleSessionExpired);
+  }, [navigate]);
 
   useEffect(() => {
     const fetchUser = async () => {

@@ -61,7 +61,7 @@ axiosInstance.interceptors.request.use((config) => {
           processQueue(err, null);
           localStorage.removeItem("accessToken");
           localStorage.removeItem("tokenExpiry");
-          window.location.href = "/login";
+          window.dispatchEvent(new Event("auth:sessionExpired"));
           return Promise.reject(err);
         });
     } else {
@@ -91,7 +91,7 @@ axiosInstance.interceptors.response.use(
     if (status === 401 && !isAuthCall && localStorage.getItem("accessToken")) {
       localStorage.removeItem("accessToken");
       localStorage.removeItem("tokenExpiry");
-      window.location.href = "/login";
+      window.dispatchEvent(new Event("auth:sessionExpired"));
     }
 
     return Promise.reject(error);

@@ -1,7 +1,5 @@
 // src/pages/SavingsGoals.jsx
 import React, { useCallback, useEffect, useState } from "react";
-import Sidebar from "../components/Sidebar";
-import Navbar from "../components/Navbar";
 import SavingsGoalFormModal from "../components/SavingsGoalFormModal";
 import ConfirmDialog from "../components/ConfirmDialog";
 import axiosInstance from "../api/axiosInstance";
@@ -18,7 +16,6 @@ export default function SavingsGoals() {
   const [contributingId, setContributingId] = useState(null);
   const [contributionAmount, setContributionAmount] = useState("");
   const [contributing, setContributing] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const navigate = useNavigate();
 
@@ -102,14 +99,9 @@ export default function SavingsGoals() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 relative">
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-
-      <div className="flex-1 md:ml-64 transition-all duration-300">
-        <Navbar title="Savings Goals" onMenuClick={() => setIsSidebarOpen(true)} />
-
-        <div className="max-w-6xl mx-auto p-6 md:p-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+    <>
+      <div className="max-w-6xl mx-auto p-6 md:p-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
               <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Savings Goals</h1>
               <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Track progress toward what you're saving up for.</p>
@@ -241,7 +233,6 @@ export default function SavingsGoals() {
               })}
             </div>
           )}
-        </div>
       </div>
 
       {showForm && (
@@ -267,6 +258,6 @@ export default function SavingsGoals() {
           onCancel={() => setConfirmDialog(null)}
         />
       )}
-    </div>
+    </>
   );
 }
