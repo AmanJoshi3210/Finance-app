@@ -8,10 +8,6 @@ import {
   History, 
   ArrowRight, 
   LayoutDashboard,
-  Hexagon,
-  Command,
-  Activity,
-  Triangle,
   Menu // ✅ Imported Menu icon for mobile toggle
 } from "lucide-react";
 
@@ -149,34 +145,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ================= SOCIAL PROOF / ENTERPRISE ================= */}
-        <section className="py-20 bg-slate-50 border-y border-slate-200">
-          <div className="max-w-7xl mx-auto px-6 text-center">
-            <p className="text-sm font-semibold text-slate-500 uppercase tracking-widest mb-10">
-              Trusted by innovative teams at
-            </p>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 items-center justify-center opacity-60 hover:opacity-100 transition-opacity duration-500">
-              <CompanyLogo 
-                name="ApexSoft" 
-                icon={<Hexagon className="w-8 h-8 text-blue-600 fill-blue-100" />} 
-              />
-              <CompanyLogo 
-                name="NovaFin" 
-                icon={<Command className="w-8 h-8 text-indigo-600" />} 
-              />
-              <CompanyLogo 
-                name="BlueWave" 
-                icon={<Activity className="w-8 h-8 text-cyan-600" />} 
-              />
-              <CompanyLogo 
-                name="Vertex" 
-                icon={<Triangle className="w-8 h-8 text-emerald-600 fill-emerald-100" />} 
-              />
-            </div>
-          </div>
-        </section>
-
         {/* ================= CTA SECTION ================= */}
         {!user && (
           <section className="relative py-24 bg-blue-600 overflow-hidden">
@@ -224,17 +192,6 @@ function InfoCard({ icon, title, description, color }) {
       </div>
       <h3 className="text-xl font-bold text-slate-900 mb-3">{title}</h3>
       <p className="text-slate-600 leading-relaxed">{description}</p>
-    </div>
-  );
-}
-
-function CompanyLogo({ name, icon }) {
-  return (
-    <div className="flex items-center justify-center gap-3 group cursor-default">
-      {icon}
-      <span className="text-2xl font-bold text-slate-700 group-hover:text-slate-900 transition-colors">
-        {name}
-      </span>
     </div>
   );
 }
