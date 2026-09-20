@@ -2,8 +2,6 @@
 import React, { useMemo, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import Papa from "papaparse";
-import Sidebar from "../components/Sidebar";
-import Navbar from "../components/Navbar";
 import axiosInstance from "../api/axiosInstance";
 import {
   Upload,
@@ -127,7 +125,6 @@ export default function ImportTransactions() {
   const [progress, setProgress] = useState({ sent: 0, total: 0 });
   const [result, setResult] = useState(null);
   const [importError, setImportError] = useState("");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
@@ -268,14 +265,8 @@ export default function ImportTransactions() {
     "w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm";
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 relative">
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-
-      <div className="flex-1 md:ml-64 transition-all duration-300">
-        <Navbar title="Import Transactions" onMenuClick={() => setIsSidebarOpen(true)} />
-
-        <div className="max-w-5xl mx-auto p-6 md:p-8">
-          <div className="mb-8">
+    <div className="max-w-5xl mx-auto p-6 md:p-8">
+      <div className="mb-8">
             <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Import from CSV</h1>
             <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
               Upload a bank statement or exported CSV, match its columns, and import your history in one go.
@@ -544,8 +535,6 @@ export default function ImportTransactions() {
               </div>
             </div>
           )}
-        </div>
-      </div>
     </div>
   );
 }

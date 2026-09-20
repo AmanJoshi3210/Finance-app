@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from "react";
-import Sidebar from "../components/Sidebar";
-import Navbar from "../components/Navbar";
 import axiosInstance from "../api/axiosInstance";
 import { useAuth } from "../context/AuthContext";
 import { Link } from "react-router-dom";
@@ -29,10 +27,7 @@ const ACCOUNT_TYPE_LABELS = {
 
 export default function Dashboard() {
   const { user, loading: authLoading } = useAuth();
-  
-  // ✅ Added State for Mobile Sidebar
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
+
   const [userData, setUserData] = useState({ totalCredit: 0, totalDebit: 0, monthlyLimit: 0 });
   const [transactions, setTransactions] = useState([]);
   const [monthlyTrend, setMonthlyTrend] = useState([]);
@@ -145,26 +140,9 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 relative">
-      
-      {/* ✅ Sidebar with State Props */}
-      <Sidebar 
-        isOpen={isSidebarOpen} 
-        onClose={() => setIsSidebarOpen(false)} 
-      />
+    <div className="p-6 md:p-8 max-w-7xl mx-auto">
 
-      {/* Main Content Area */}
-      <div className="flex-1 md:ml-64 transition-all duration-300">
-        
-        {/* ✅ Navbar with Toggle Callback */}
-        <Navbar 
-          title="Dashboard" 
-          onMenuClick={() => setIsSidebarOpen(true)} 
-        />
-        
-        <div className="p-6 md:p-8 max-w-7xl mx-auto">
-          
-          {/* Header Section */}
+      {/* Header Section */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
               <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
@@ -341,8 +319,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-        </div>
-      </div>
     </div>
   );
 }

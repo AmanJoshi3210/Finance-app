@@ -1,6 +1,7 @@
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AppLayout from "./components/AppLayout";
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -32,93 +33,24 @@ function App() {
         <Route path="/reset-password" element={<ResetPassword />} />
 
         <Route
-          path="/dashboard"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <AppLayout />
             </ProtectedRoute>
           }
-        />
-        <Route
-          path="/transactions"
-          element={
-            <ProtectedRoute>
-              <Transactions />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/add"
-          element={
-            <ProtectedRoute>
-              <AddTransaction />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/import"
-          element={
-            <ProtectedRoute>
-              <ImportTransactions />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <Settings />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/previous-months-summary"
-          element={
-            <ProtectedRoute>
-              <PreviousMonthsSummary />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/recurring-transactions"
-          element={
-            <ProtectedRoute>
-              <RecurringTransactions />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/savings-goals"
-          element={
-            <ProtectedRoute>
-              <SavingsGoals />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/bill-reminders"
-          element={
-            <ProtectedRoute>
-              <BillReminders />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/accounts"
-          element={
-            <ProtectedRoute>
-              <Accounts />
-            </ProtectedRoute>
-          }
-        />
+        >
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/transactions" element={<Transactions />} />
+          <Route path="/add" element={<AddTransaction />} />
+          <Route path="/import" element={<ImportTransactions />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/previous-months-summary" element={<PreviousMonthsSummary />} />
+          <Route path="/recurring-transactions" element={<RecurringTransactions />} />
+          <Route path="/savings-goals" element={<SavingsGoals />} />
+          <Route path="/bill-reminders" element={<BillReminders />} />
+          <Route path="/accounts" element={<Accounts />} />
+        </Route>
       </Routes>
     </>
   );

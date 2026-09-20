@@ -1,7 +1,5 @@
 // src/pages/PreviousMonthsSummary.jsx
 import React, { useEffect, useState } from "react";
-import Sidebar from "../components/Sidebar";
-import Navbar from "../components/Navbar";
 import axiosInstance from "../api/axiosInstance";
 import generateMonthlyReportPdf from "../utils/monthlyReportPdf";
 import { useNavigate } from "react-router-dom";
@@ -11,7 +9,6 @@ export default function PreviousMonthsSummary() {
   const [summaries, setSummaries] = useState([]);
   const [trend, setTrend] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const navigate = useNavigate();
 
@@ -65,14 +62,8 @@ export default function PreviousMonthsSummary() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 relative">
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-
-      <div className="flex-1 md:ml-64 transition-all duration-300">
-        <Navbar title="Previous Months Summary" onMenuClick={() => setIsSidebarOpen(true)} />
-
-        <div className="max-w-5xl mx-auto p-6 md:p-8">
-          <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="max-w-5xl mx-auto p-6 md:p-8">
+      <div className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
               <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Monthly History</h1>
               <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
@@ -166,8 +157,6 @@ export default function PreviousMonthsSummary() {
               </div>
             </div>
           )}
-        </div>
-      </div>
     </div>
   );
 }

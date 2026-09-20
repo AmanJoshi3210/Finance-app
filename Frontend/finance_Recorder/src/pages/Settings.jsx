@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from "react";
-import Sidebar from "../components/Sidebar";
-import Navbar from "../components/Navbar";
 import axiosInstance from "../api/axiosInstance";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -92,9 +90,6 @@ export default function Settings() {
   useEffect(() => {
     if (user?.name) setFullName(user.name);
   }, [user]);
-
-  // ✅ State for Mobile Sidebar
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -328,16 +323,8 @@ export default function Settings() {
     );
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 relative">
-      {/* ✅ Sidebar with State Props */}
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-
-      {/* Main Content */}
-      <div className="flex-1 md:ml-64 transition-all duration-300">
-        {/* ✅ Navbar with Toggle Callback */}
-        <Navbar title="Settings" onMenuClick={() => setIsSidebarOpen(true)} />
-
-        <div className="max-w-4xl mx-auto p-6 md:p-8">
+    <>
+      <div className="max-w-4xl mx-auto p-6 md:p-8">
           <div className="mb-8">
             <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Preferences</h2>
             <p className="text-slate-500 dark:text-slate-400 mt-1">Manage your budget limits and account settings.</p>
@@ -775,25 +762,24 @@ export default function Settings() {
               )}
             </div>
           </div>
-        </div>
-
-        <Snackbar
-          open={open}
-          autoHideDuration={3000}
-          onClose={() => setOpen(false)}
-          anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-        >
-          <Alert
-            severity={snackSeverity}
-            variant="filled"
-            onClose={() => setOpen(false)}
-            sx={{ width: "100%", borderRadius: 2 }}
-          >
-            {snackMessage}
-          </Alert>
-        </Snackbar>
       </div>
-    </div>
+
+      <Snackbar
+        open={open}
+        autoHideDuration={3000}
+        onClose={() => setOpen(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
+          severity={snackSeverity}
+          variant="filled"
+          onClose={() => setOpen(false)}
+          sx={{ width: "100%", borderRadius: 2 }}
+        >
+          {snackMessage}
+        </Alert>
+      </Snackbar>
+    </>
   );
 }
 

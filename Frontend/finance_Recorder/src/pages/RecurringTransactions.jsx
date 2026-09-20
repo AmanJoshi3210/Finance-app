@@ -1,7 +1,5 @@
 // src/pages/RecurringTransactions.jsx
 import React, { useCallback, useEffect, useState } from "react";
-import Sidebar from "../components/Sidebar";
-import Navbar from "../components/Navbar";
 import RecurringTransactionFormModal from "../components/RecurringTransactionFormModal";
 import ConfirmDialog from "../components/ConfirmDialog";
 import axiosInstance from "../api/axiosInstance";
@@ -26,7 +24,6 @@ export default function RecurringTransactions() {
   const [editingRule, setEditingRule] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const navigate = useNavigate();
 
@@ -100,14 +97,9 @@ export default function RecurringTransactions() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 font-sans text-slate-900 dark:text-slate-100 relative">
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-
-      <div className="flex-1 md:ml-64 transition-all duration-300">
-        <Navbar title="Recurring Transactions" onMenuClick={() => setIsSidebarOpen(true)} />
-
-        <div className="max-w-5xl mx-auto p-6 md:p-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+    <>
+      <div className="max-w-5xl mx-auto p-6 md:p-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
               <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Recurring Transactions</h1>
               <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Automate bills and income that repeat on a schedule.</p>
@@ -223,7 +215,6 @@ export default function RecurringTransactions() {
               </div>
             </div>
           )}
-        </div>
       </div>
 
       {showForm && (
@@ -249,6 +240,6 @@ export default function RecurringTransactions() {
           onCancel={() => setConfirmDialog(null)}
         />
       )}
-    </div>
+    </>
   );
 }
