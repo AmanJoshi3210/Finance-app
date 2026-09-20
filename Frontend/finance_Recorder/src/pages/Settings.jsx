@@ -342,7 +342,6 @@ export default function Settings() {
                   className={`shrink-0 lg:w-full flex items-center gap-3 px-4 py-3 font-medium rounded-xl border whitespace-nowrap transition-colors text-left ${
                     activeSection === id
                       ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border-blue-200 dark:border-blue-900"
-                      
                       : "border-transparent text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                   }`}
                 >
