@@ -316,7 +316,7 @@ export default function Settings() {
 
   if (loading)
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
         <Loader2 className="w-10 h-10 text-blue-600 dark:text-blue-400 animate-spin mb-4" />
         <p className="text-slate-500 dark:text-slate-400 font-medium">Loading settings...</p>
       </div>
@@ -324,14 +324,14 @@ export default function Settings() {
 
   return (
     <>
-      <div className="max-w-4xl mx-auto p-6 md:p-8">
+      <div className="max-w-6xl mx-auto p-6 md:p-8">
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Preferences</h2>
+            <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Preferences</h1>
             <p className="text-slate-500 dark:text-slate-400 mt-1">Manage your budget limits and account settings.</p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <nav className="lg:col-span-1 space-y-2" aria-label="Settings sections">
+          <div className="grid grid-cols-1 lg:grid-cols-[16rem_minmax(0,1fr)] gap-6 lg:gap-8 items-start">
+            <nav className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-visible pb-1 lg:pb-0 lg:sticky lg:top-24" aria-label="Settings sections">
               {SECTIONS.map(({ id, label, ...section }) => {
                 const Icon = section.icon;
                 return (
@@ -339,10 +339,11 @@ export default function Settings() {
                   key={id}
                   onClick={() => setActiveSection(id)}
                   aria-current={activeSection === id ? "true" : undefined}
-                  className={`w-full flex items-center gap-3 px-4 py-3 font-medium rounded-xl transition-colors text-left ${
+                  className={`shrink-0 lg:w-full flex items-center gap-3 px-4 py-3 font-medium rounded-xl border whitespace-nowrap transition-colors text-left ${
                     activeSection === id
-                      ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border border-blue-100 dark:border-blue-900 ring-2 ring-blue-50 dark:ring-blue-950"
-                      : "text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
+                      ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm border-blue-200 dark:border-blue-900"
+                      
+                      : "border-transparent text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-100"
                   }`}
                 >
                   <Icon size={18} className="shrink-0" />
@@ -352,7 +353,7 @@ export default function Settings() {
               })}
             </nav>
 
-            <div className="lg:col-span-2">
+            <div className="min-w-0">
               {activeSection === "budget" && (
                 <div className="space-y-6">
                 <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
@@ -428,14 +429,14 @@ export default function Settings() {
                           return (
                             <div
                               key={category}
-                              className="flex items-center gap-3 p-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800"
+                              className="flex flex-wrap sm:flex-nowrap items-center gap-3 p-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800"
                             >
-                              <div className="flex items-center gap-2 w-40 shrink-0">
-                                <Tag size={16} className="text-slate-400" />
+                              <div className="flex items-center gap-2 w-full sm:w-40 shrink-0">
+                                <Tag size={16} className="text-slate-400 shrink-0" />
                                 <span className="font-medium text-slate-700 dark:text-slate-200 truncate">{category}</span>
                               </div>
 
-                              <div className="relative flex-1 max-w-xs">
+                              <div className="relative flex-1 min-w-[10rem]">
                                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                   <IndianRupee size={16} className="text-slate-400" />
                                 </div>
@@ -619,7 +620,7 @@ export default function Settings() {
 
                   <div className="p-6 md:p-8 space-y-4">
                     <div>
-                      <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Full Name</label>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">Full Name</label>
                       <input
                         type="text"
                         value={fullName}
@@ -630,7 +631,7 @@ export default function Settings() {
                     </div>
 
                     <div>
-                      <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Email Address</label>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">Email Address</label>
                       <div className="mt-2 relative">
                         <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                         <input
@@ -728,7 +729,7 @@ export default function Settings() {
                     />
 
                     <div>
-                      <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Session timeout</label>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">Session timeout</label>
                       <select
                         value={security.sessionTimeout}
                         onChange={(e) =>
@@ -743,7 +744,7 @@ export default function Settings() {
                     </div>
 
                     <div className="flex items-start gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300">
-                      <Eye size={18} className="mt-0.5 text-slate-500 dark:text-slate-400" />
+                      <Eye size={18} className="mt-0.5 shrink-0 text-slate-500 dark:text-slate-400" />
                       <p>
                         Last password update: <span className="font-semibold">{security.lastPasswordChange}</span>
                       </p>
@@ -754,7 +755,8 @@ export default function Settings() {
                         onClick={handleSaveSecurity}
                         className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl"
                       >
-                        <Save size={16} /> Save Security Settings
+                        <Save size={16} />
+                        Save Security Settings
                       </button>
                     </div>
                   </div>
@@ -786,11 +788,11 @@ export default function Settings() {
 function SwitchRow({ label, description, checked, onToggle, icon }) {
   return (
     <div className="flex items-center justify-between gap-4 p-4 border border-slate-200 dark:border-slate-700 rounded-xl bg-slate-50 dark:bg-slate-800">
-      <div className="flex items-start gap-2">
-        {icon}
+      <div className="flex items-start gap-3 min-w-0">
+        {icon && <span className="mt-0.5 shrink-0">{icon}</span>}
         <div>
           <h4 className="font-medium text-slate-800 dark:text-slate-100">{label}</h4>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{description}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{description}</p>
         </div>
       </div>
 
