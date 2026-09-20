@@ -20,6 +20,7 @@ import ImportTransactions from "./pages/ImportTransactions";
 import SavingsGoals from "./pages/SavingsGoals";
 import BillReminders from "./pages/BillReminders";
 import Accounts from "./pages/Accounts";
+import MonthlyTracker from "./pages/MonthlyTracker";
 
 function App() {
   return (
@@ -50,6 +51,7 @@ function App() {
           <Route path="/savings-goals" element={<SavingsGoals />} />
           <Route path="/bill-reminders" element={<BillReminders />} />
           <Route path="/accounts" element={<Accounts />} />
+          <Route path="/monthly-tracker" element={<MonthlyTracker />} />
         </Route>
       </Routes>
     </>
