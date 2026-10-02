@@ -14,6 +14,7 @@ import {
   BellRing,
   Upload,
   Wallet,
+  Info,
   X // Import Close icon
 } from "lucide-react";
 
@@ -34,6 +35,7 @@ export default function Sidebar({ isOpen, onClose }) {
     { name: "Savings Goals", path: "/savings-goals", icon: <PiggyBank size={20} /> },
     { name: "Bill Reminders", path: "/bill-reminders", icon: <BellRing size={20} /> },
     { name: "Settings", path: "/settings", icon: <Settings size={20} /> },
+    { name: "About", path: "/about", icon: <Info size={20} /> },
   ];
 
   return (

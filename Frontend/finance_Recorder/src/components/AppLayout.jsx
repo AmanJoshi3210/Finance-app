@@ -18,6 +18,7 @@ const PAGE_TITLES = {
   "/savings-goals": "Savings Goals",
   "/bill-reminders": "Bill Reminders",
   "/accounts": "Accounts",
+  "/about": "About FinTrack",
 };
 
 export default function AppLayout() {
